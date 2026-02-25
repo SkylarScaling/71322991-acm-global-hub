@@ -6,6 +6,9 @@
     - debug:
         msg: "Provisioning and Configuring OCP Cluster on AWS"
 
+- name: Install Pre-requisites
+  ansible.builtin.import_playbook: ../playbooks/ocp/install-ocp-prerequisites.yaml
+
 - name: Provision OCP Cluster on AWS via IPI
   ansible.builtin.import_playbook: ../playbooks/ocp/provision-cluster.yaml
 

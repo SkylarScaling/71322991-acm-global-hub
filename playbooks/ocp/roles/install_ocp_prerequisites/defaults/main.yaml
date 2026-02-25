@@ -1,5 +1,5 @@
 ---
 force_update: false
-openshift_cli_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ openshift_version }}.{{ ocp_patch_version }}/openshift-client-linux.tar.gz
+openshift_mirror_url: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/{{ openshift_version }}.{{ ocp_patch_version }}"
 oc: "{{ bin_dir }}/oc"
 ...

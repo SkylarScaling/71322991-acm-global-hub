@@ -10,6 +10,7 @@ all:
     tmp_dir: <tmp_dir>
     openshift_version: "4.20"
     ocp_patch_version: "13"
+    force_update: true
     ocp_cluster:
       name: <cluster_name>
       base_domain: <base_domain>
