@@ -1,0 +1,8 @@
+# Apply Day 2 Configuration
+- name: Apply Day 2 Configuration to OpenShift Cluster
+  hosts: localhost
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
+  roles:
+    - install_openshift_gitops

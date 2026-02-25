@@ -1,0 +1,10 @@
+---
+- name: Install Day 2 Config via OpenShift GitOps (ArgoCD)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
+
+  roles:
+    - role: apps_install_acm

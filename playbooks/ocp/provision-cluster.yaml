@@ -1,0 +1,12 @@
+---
+- name: Provision OCP Cluster on AWS via IPI
+  gather_facts: false
+  hosts: localhost
+  tasks:
+    - name: Set Playbook Facts
+      set_fact:
+        cluster_address: "{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}"
+
+    - include_role:
+        name: aws_provision_ocp_ipi
+...

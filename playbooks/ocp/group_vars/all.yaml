@@ -1,0 +1,9 @@
+---
+bin_dir: /usr/local/bin
+working_dir: "{{ tmp_dir }}"
+install_dir: "{{ working_dir }}/install"
+state: present
+k8s_port: 6443
+ocp_service_account_tokenfile: "~/.ocp-token"
+ocp_token_var: "ocp_api_token"
+...

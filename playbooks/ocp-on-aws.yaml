@@ -1,0 +1,24 @@
+---
+- name: Install OCP on AWS
+  gather_facts: false
+  hosts: localhost
+  tasks:
+    - debug:
+        msg: "Provisioning and Configuring OCP Cluster on AWS"
+
+- name: Provision OCP Cluster on AWS via IPI
+  ansible.builtin.import_playbook: ../playbooks/ocp/provision-cluster.yaml
+
+- name: Install OpenShift GitOps (ArgoCD)
+  ansible.builtin.import_playbook: ../playbooks/ocp/install-argo.yaml
+
+- name: Install Day 2 Config via GitOps
+  ansible.builtin.import_playbook: ../playbooks/argo/day2-config.yaml
+
+- name: Cluster Provisioning Complete
+  gather_facts: false
+  hosts: localhost
+  tasks:
+    - debug:
+        msg: "Cluster provisioning complete. Cluster can be accessed at: https://console-openshift-console.apps.{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}/"
+...

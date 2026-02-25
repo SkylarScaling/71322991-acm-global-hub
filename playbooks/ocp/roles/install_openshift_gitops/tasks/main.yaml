@@ -1,0 +1,70 @@
+---
+- name: "Ensure the Operator Namespace Exists"
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ gitops_operator_namespace }}"
+    state: present
+
+# Note: If installing to 'openshift-operators', the OperatorGroup already exists.
+# We only create one if we are using a custom namespace.
+- name: "Create OperatorGroup for GitOps (if custom namespace)"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: operators.coreos.com/v1
+      kind: OperatorGroup
+      metadata:
+        name: openshift-gitops-operator-group
+        namespace: "{{ gitops_operator_namespace }}"
+      spec:
+        targetNamespaces:
+          - "{{ gitops_operator_namespace }}"
+  when: gitops_operator_namespace != "openshift-operators"
+
+- name: "Subscribe to OpenShift GitOps Operator"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: openshift-gitops-operator
+        namespace: "{{ gitops_operator_namespace }}"
+      spec:
+        channel: "{{ gitops_operator_channel }}"
+        installPlanApproval: Automatic
+        name: openshift-gitops-operator
+        source: "{{ gitops_operator_source }}"
+        sourceNamespace: "{{ gitops_operator_source_namespace }}"
+
+- name: "Wait for GitOps Operator CSV to be installed"
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    name: openshift-gitops-operator
+    namespace: "{{ gitops_operator_namespace }}"
+  register: gitops_sub
+  until: gitops_sub.resources[0].status.currentCSV is defined
+  retries: 30
+  delay: 10
+  when: wait_for_operator_ready
+
+- name: "Wait for the GitOps Operator Deployment to be Ready"
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ gitops_operator_namespace }}"
+    label_selectors:
+      - "operators.coreos.com/openshift-gitops-operator.{{ gitops_operator_namespace }}="
+  register: gitops_deployment
+  until:
+    - gitops_deployment.resources | length > 0
+    - gitops_deployment.resources[0].status.availableReplicas is defined
+    - gitops_deployment.resources[0].status.availableReplicas > 0
+  retries: 60
+  delay: 10
+  when: wait_for_operator_ready
+
+- debug:
+    msg: "OpenShift GitOps installed successfully. The default 'openshift-gitops' namespace should now be initializing."

@@ -1,0 +1,43 @@
+---
+- name: Verify that the openshift-gitops namespace exists
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: "{{ acm_argocd_namespace }}"
+  register: gitops_ns
+  failed_when: gitops_ns.resources | length == 0
+
+- name: Teach ArgoCD how to evaluate OLM Subscription health
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: argoproj.io/v1alpha1
+      kind: ArgoCD
+      metadata:
+        name: openshift-gitops # Default name for the OpenShift GitOps instance
+        namespace: "{{ acm_argocd_namespace }}"
+      spec:
+        resourceCustomizations: |
+          operators.coreos.com/Subscription:
+            health.lua: |
+              hs = {}
+              hs.status = "Progressing"
+              hs.message = "Waiting for Operator to install..."
+              if obj.status ~= nil then
+                if obj.status.installedCSV ~= nil then
+                  hs.status = "Healthy"
+                  hs.message = "CSV " .. obj.status.installedCSV .. " is installed"
+                  return hs
+                end
+              end
+              return hs
+
+- name: Grant ArgoCD Application Controller cluster-admin permissions
+  kubernetes.core.k8s:
+    state: present
+    template: argocd-rbac.yaml.j2
+
+- name: Create the OpenShift GitOps Application for ACM
+  kubernetes.core.k8s:
+    state: present
+    template: acm-argocd-app.yaml.j2
