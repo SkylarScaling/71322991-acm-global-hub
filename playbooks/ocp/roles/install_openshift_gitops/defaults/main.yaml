@@ -12,5 +12,7 @@ gitops_operator_source_namespace: "openshift-marketplace"
 # 'openshift-operators' is the standard global namespace for operators
 gitops_operator_namespace: "openshift-operators"
 
+acm_argocd_namespace: "openshift-gitops"
+
 # Set to true if you want to wait for the ArgoCD instance to be ready after install
 wait_for_operator_ready: true

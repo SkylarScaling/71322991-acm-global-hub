@@ -66,5 +66,34 @@
   delay: 10
   when: wait_for_operator_ready
 
+- name: Teach ArgoCD how to evaluate OLM Subscription health
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: argoproj.io/v1alpha1
+      kind: ArgoCD
+      metadata:
+        name: openshift-gitops # Default name for the OpenShift GitOps instance
+        namespace: "{{ acm_argocd_namespace }}"
+      spec:
+        resourceCustomizations: |
+          operators.coreos.com/Subscription:
+            health.lua: |
+              hs = {}
+              hs.status = "Progressing"
+              hs.message = "Waiting for Operator to install..."
+              if obj.status ~= nil then
+                if obj.status.installedCSV ~= nil then
+                  hs.status = "Healthy"
+                  hs.message = "CSV " .. obj.status.installedCSV .. " is installed"
+                  return hs
+                end
+              end
+              return hs
+  register: argocd_patch
+  until: argocd_patch is not failed
+  retries: 12
+  delay: 10
+
 - debug:
     msg: "OpenShift GitOps installed successfully. The default 'openshift-gitops' namespace should now be initializing."

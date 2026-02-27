@@ -1,13 +1,26 @@
 ---
-- name: "Check if cluster directory already exists"
+- name: Check if cluster directory already exists
   ansible.builtin.stat:
     path: "{{ install_dir }}/{{ ocp_cluster.name }}"
   register: cluster_dir_stat
 
+- name: Check if auth directory exists
+  ansible.builtin.stat:
+    path: "{{ install_dir }}/{{ ocp_cluster.name }}/auth"
+  register: auth_dir_stat
+
+- name: Check if kubeadmin password exists
+  ansible.builtin.stat:
+    path: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeadmin-password"
+  register: kubeadmin_pwd_stat
+
 - name: Skip provisioning if cluster exists
   ansible.builtin.debug:
     msg: "Cluster directory already exists, skipping provisioning..."
-  when: cluster_dir_stat.stat.exists
+  when: >
+    not cluster_dir_stat.stat.exists or
+    not auth_dir_stat.stat.exists or
+    not kubeadmin_pwd_stat.stat.exists
 
 - name: Provision Cluster on AWS
   block:
@@ -57,7 +70,10 @@
       until: job_status.finished
       retries: 120
       delay: 30
-  when: not cluster_dir_stat.stat.exists
+  when: >
+    not cluster_dir_stat.stat.exists or
+    not auth_dir_stat.stat.exists or
+    not kubeadmin_pwd_stat.stat.exists
 
 - debug:
     msg: "Cluster console available at: https://console-openshift-console.apps.{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}/"

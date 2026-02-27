@@ -12,6 +12,9 @@
 - name: Provision OCP Cluster on AWS via IPI
   ansible.builtin.import_playbook: ../playbooks/ocp/provision-cluster.yaml
 
+- name: Creating Infra MachineSet
+  ansible.builtin.import_playbook: ../playbooks/ocp/aws-create-infra-machinesets.yaml
+
 - name: Install OpenShift GitOps (ArgoCD)
   ansible.builtin.import_playbook: ../playbooks/ocp/install-argo.yaml
 

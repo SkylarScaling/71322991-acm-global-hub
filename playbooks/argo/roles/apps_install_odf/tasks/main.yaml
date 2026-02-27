@@ -3,7 +3,7 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Namespace
-    name: "{{ acm_argocd_namespace }}"
+    name: "{{ odf_argocd_namespace }}"
   register: gitops_ns
   failed_when: gitops_ns.resources | length == 0
 
@@ -12,7 +12,7 @@
     state: present
     template: argocd-rbac.yaml.j2
 
-- name: Create the OpenShift GitOps Application for ACM
+- name: Create the OpenShift GitOps Application for ODF
   kubernetes.core.k8s:
     state: present
-    template: acm-argocd-app.yaml.j2
+    template: odf-argocd-app.yaml.j2
