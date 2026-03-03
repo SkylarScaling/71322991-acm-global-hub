@@ -2,6 +2,8 @@
 - name: Install OCP on AWS
   gather_facts: false
   hosts: localhost
+  vars_files:
+    - ../group_vars/all.yaml
   tasks:
     - debug:
         msg: "Provisioning and Configuring OCP Cluster on AWS"
