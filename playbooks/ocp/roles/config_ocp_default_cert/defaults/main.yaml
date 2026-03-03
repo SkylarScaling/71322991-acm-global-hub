@@ -1,0 +1,2 @@
+---
+custom_cert_secret_name: "custom-ingress-default-cert"

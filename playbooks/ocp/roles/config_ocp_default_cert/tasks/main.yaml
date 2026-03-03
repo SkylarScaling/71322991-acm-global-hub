@@ -1,0 +1,32 @@
+---
+- name: Generate OpenShift manifests from install-config.yaml
+  ansible.builtin.command:
+    cmd: /usr/local/bin/openshift-install create manifests --dir={{ install_dir }}
+  # This command consumes install-config.yaml, so we only want to run it if the manifests don't exist yet
+  args:
+    creates: "{{ install_dir }}/manifests/cluster-ingress-02-config.yml"
+
+- name: Inject custom TLS Secret manifest into the installer directory
+  ansible.builtin.template:
+    src: 99_custom-ingress-secret.yaml.j2
+    dest: "{{ install_dir }}/openshift/99_custom-ingress-secret.yaml"
+    mode: '0644'
+
+- name: Read the installer-generated Ingress configuration
+  ansible.builtin.slurp:
+    src: "{{ install_dir }}/manifests/cluster-ingress-02-config.yml"
+  register: ingress_config_b64
+
+- name: Parse Ingress config into a Python dictionary
+  ansible.builtin.set_fact:
+    ingress_config: "{{ ingress_config_b64['content'] | b64decode | from_yaml }}"
+
+- name: Update Ingress config to use the custom default certificate
+  ansible.builtin.set_fact:
+    ingress_config: "{{ ingress_config | combine({'spec': {'defaultCertificate': {'name': custom_cert_secret_name}}}, recursive=True) }}"
+
+- name: Write the updated Ingress configuration back to the file
+  ansible.builtin.copy:
+    content: "{{ ingress_config | to_nice_yaml }}"
+    dest: "{{ install_dir }}/manifests/cluster-ingress-02-config.yml"
+    mode: '0644'
