@@ -1,6 +1,8 @@
 ---
 - name: Create Custom MachineSets (Infra & Storage)
   hosts: localhost
+  vars_files:
+    - ../group_vars/all.yaml
   connection: local
   gather_facts: false
   environment:

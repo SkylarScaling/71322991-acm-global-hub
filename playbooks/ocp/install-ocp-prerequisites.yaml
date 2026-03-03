@@ -3,6 +3,8 @@
   gather_facts: false
   connection: local
   hosts: localhost
+  vars_files:
+    - ../group_vars/all.yaml
   tasks:
     - name: Download required utilities
       include_role:
