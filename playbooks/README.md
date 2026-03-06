@@ -23,10 +23,10 @@ all:
       cluster_name: "{{ ocp_cluster.name }}"
       base_domain: "{{ ocp_cluster.base_domain }}"
       control_plane:
-        instance_type: "m6a.xlarge"
+        instance_type: "m6a.2xlarge"
       workers:
         instance_type: "m6a.xlarge"
-        replicas: "2"
+        replicas: "3"
       infra:
         instance_type: "m6a.4xlarge"
         replicas: "3"

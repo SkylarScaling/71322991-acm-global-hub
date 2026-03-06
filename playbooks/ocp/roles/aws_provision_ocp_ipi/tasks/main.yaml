@@ -18,8 +18,8 @@
   ansible.builtin.debug:
     msg: "Cluster directory already exists, skipping provisioning..."
   when: >
-    not cluster_dir_stat.stat.exists or
-    not auth_dir_stat.stat.exists or
+    not cluster_dir_stat.stat.exists and
+    not auth_dir_stat.stat.exists and
     not kubeadmin_pwd_stat.stat.exists
 
 - name: Provision Cluster on AWS
