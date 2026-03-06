@@ -2,8 +2,6 @@
 - name: Install OCP on AWS
   gather_facts: false
   hosts: localhost
-  vars_files:
-    - ../group_vars/all.yaml
   tasks:
     - debug:
         msg: "Provisioning and Configuring OCP Cluster on AWS"
@@ -23,10 +21,51 @@
 - name: Install Day 2 Config via GitOps
   ansible.builtin.import_playbook: ../playbooks/argo/day2-config.yaml
 
-- name: Cluster Provisioning Complete
-  gather_facts: false
+- name: Install ACM Governance Policies
+  ansible.builtin.import_playbook: ../playbooks/acm/acm-policy-install.yaml
+
+- name: Verify GitOps Deployments and Display Credentials
   hosts: localhost
+  connection: local
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
   tasks:
-    - debug:
-        msg: "Cluster provisioning complete. Cluster can be accessed at: https://console-openshift-console.apps.{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}/"
+    - name: Wait for all ArgoCD Applications to be Healthy and Synced
+      kubernetes.core.k8s_info:
+        api_version: argoproj.io/v1alpha1
+        kind: Application
+        namespace: openshift-gitops
+      register: argo_apps
+      until: >
+        argo_apps.resources | length >= 4 and
+        (argo_apps.resources | selectattr('status.health.status', 'defined') | 
+         selectattr('status.health.status', 'equalto', 'Healthy') | list | length == argo_apps.resources | length) and
+        (argo_apps.resources | selectattr('status.sync.status', 'defined') | 
+         selectattr('status.sync.status', 'equalto', 'Synced') | list | length == argo_apps.resources | length)
+      # Wait up to 45 minutes (90 retries * 30 seconds) for ODF, ACM, and MCO to fully deploy
+      retries: 90
+      delay: 30
+
+    - name: Fetch kubeadmin password from install directory
+      ansible.builtin.slurp:
+        src: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeadmin-password"
+      register: kubeadmin_password_raw
+
+    - name: Set cluster credentials fact
+      ansible.builtin.set_fact:
+        kubeadmin_password: "{{ kubeadmin_password_raw.content | b64decode }}"
+
+    - name: Print Final Cluster Handoff Details
+      ansible.builtin.debug:
+        msg:
+          - "=================================================================="
+          - "🎉 CLUSTER PROVISIONING AND GITOPS DEPLOYMENT COMPLETE! 🎉"
+          - "=================================================================="
+          - "Cluster Name: {{ ocp_cluster.name }}"
+          - "Web Console:  https://console-openshift-console.apps.{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}/"
+          - "Username:     kubeadmin"
+          - "Password:     {{ kubeadmin_password }}"
+          - "=================================================================="
+          - "All ArgoCD Applications (ODF, ACM, COO, MCO) are Healthy and Synced."
 ...
