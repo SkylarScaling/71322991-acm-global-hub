@@ -7,7 +7,7 @@ spec:
   project: {{ odf_argocd_project }}
   source:
     repoURL: {{ odf_git_repo_url }}
-    targetRevision: {{ odf_git_repo_revision }}
+    targetRevision: '{{ odf_git_repo_revision }}'
     path: {{ odf_git_repo_path }}
     directory:
       recurse: true

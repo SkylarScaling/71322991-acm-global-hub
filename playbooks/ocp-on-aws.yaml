@@ -21,9 +21,6 @@
 - name: Install Day 2 Config via GitOps
   ansible.builtin.import_playbook: ../playbooks/argo/day2-config.yaml
 
-- name: Install ACM Governance Policies
-  ansible.builtin.import_playbook: ../playbooks/acm/acm-policy-install.yaml
-
 - name: Verify GitOps Deployments and Display Credentials
   hosts: localhost
   connection: local
@@ -39,9 +36,9 @@
       register: argo_apps
       until: >
         argo_apps.resources | length >= 4 and
-        (argo_apps.resources | selectattr('status.health.status', 'defined') | 
+        (argo_apps.resources | selectattr('status.health.status', 'defined') |
          selectattr('status.health.status', 'equalto', 'Healthy') | list | length == argo_apps.resources | length) and
-        (argo_apps.resources | selectattr('status.sync.status', 'defined') | 
+        (argo_apps.resources | selectattr('status.sync.status', 'defined') |
          selectattr('status.sync.status', 'equalto', 'Synced') | list | length == argo_apps.resources | length)
       # Wait up to 45 minutes (90 retries * 30 seconds) for ODF, ACM, and MCO to fully deploy
       retries: 90
@@ -63,6 +60,7 @@
           - "🎉 CLUSTER PROVISIONING AND GITOPS DEPLOYMENT COMPLETE! 🎉"
           - "=================================================================="
           - "Cluster Name: {{ ocp_cluster.name }}"
+          - "OCP Version:  {{ openshift_version }}.{{ ocp_patch_version }}"
           - "Web Console:  https://console-openshift-console.apps.{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}/"
           - "Username:     kubeadmin"
           - "Password:     {{ kubeadmin_password }}"
