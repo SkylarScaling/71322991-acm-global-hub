@@ -1,0 +1,5 @@
+---
+- name: Deploy Argo CD Installation Policy to Regional Hub
+  kubernetes.core.k8s:
+    state: present
+    template: "argocd-policy.yaml.j2"

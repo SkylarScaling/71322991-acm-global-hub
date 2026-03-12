@@ -1,43 +1,4 @@
 ---
-- name: "Ensure the Operator Namespace Exists"
-  kubernetes.core.k8s:
-    api_version: v1
-    kind: Namespace
-    name: "{{ gitops_operator_namespace }}"
-    state: present
-
-# Note: If installing to 'openshift-operators', the OperatorGroup already exists.
-# We only create one if we are using a custom namespace.
-- name: "Create OperatorGroup for GitOps (if custom namespace)"
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: operators.coreos.com/v1
-      kind: OperatorGroup
-      metadata:
-        name: openshift-gitops-operator-group
-        namespace: "{{ gitops_operator_namespace }}"
-      spec:
-        targetNamespaces:
-          - "{{ gitops_operator_namespace }}"
-  when: gitops_operator_namespace != "openshift-operators"
-
-- name: "Subscribe to OpenShift GitOps Operator"
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: operators.coreos.com/v1alpha1
-      kind: Subscription
-      metadata:
-        name: openshift-gitops-operator
-        namespace: "{{ gitops_operator_namespace }}"
-      spec:
-        channel: "{{ gitops_operator_channel }}"
-        installPlanApproval: Automatic
-        name: openshift-gitops-operator
-        source: "{{ gitops_operator_source }}"
-        sourceNamespace: "{{ gitops_operator_source_namespace }}"
-
 - name: "Wait for GitOps Operator CSV to be installed"
   kubernetes.core.k8s_info:
     api_version: operators.coreos.com/v1alpha1
@@ -48,7 +9,6 @@
   until: gitops_sub.resources[0].status.currentCSV is defined
   retries: 30
   delay: 10
-  when: wait_for_operator_ready
 
 - name: "Wait for the GitOps Operator Deployment to be Ready"
   kubernetes.core.k8s_info:
@@ -64,14 +24,13 @@
     - gitops_deployment.resources[0].status.availableReplicas > 0
   retries: 60
   delay: 10
-  when: wait_for_operator_ready
 
 - name: "Wait for the default openshift-gitops ArgoCD instance to be auto-created by the Operator"
   kubernetes.core.k8s_info:
-    api_version: argoproj.io/v1beta1
+    api_version: argoproj.io/v1alpha1
     kind: ArgoCD
     name: openshift-gitops # Default name for the OpenShift GitOps instance
-    namespace: "{{ acm_argocd_namespace }}"
+    namespace: openshift-gitops
   register: default_argocd
   until: default_argocd.resources | length > 0
   # Wait up to 5 minutes (30 * 10s) for the operator to scaffold the instance
@@ -82,11 +41,11 @@
   kubernetes.core.k8s:
     state: present
     definition:
-      apiVersion: argoproj.io/v1beta1
+      apiVersion: argoproj.io/v1alpha1
       kind: ArgoCD
       metadata:
         name: openshift-gitops
-        namespace: "{{ acm_argocd_namespace }}"
+        namespace: openshift-gitops
       spec:
         resourceHealthChecks:
           - group: operators.coreos.com
@@ -154,4 +113,4 @@
   delay: 10
 
 - debug:
-    msg: "OpenShift GitOps installed successfully. The default 'openshift-gitops' namespace should now be initializing."
+    msg: "OpenShift GitOps installed successfully. The default '{{ gitops_operator_namespace }}' namespace should now be initializing."

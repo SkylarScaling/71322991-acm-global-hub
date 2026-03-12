@@ -9,7 +9,7 @@
     KUBECONFIG: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
 
   roles:
-    - role: apps_install_acm
-    - role: apps_install_odf
-#    - role: apps_install_coo
-    - role: apps_install_mco
+    - role: argo/apps_install_acm
+    - role: argo/apps_install_odf
+    - role: argo/apps_install_coo
+    - role: argo/apps_install_mco
