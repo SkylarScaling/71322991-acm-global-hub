@@ -1,6 +1,7 @@
 ---
 # The update channel to subscribe to (e.g., gitops-1.10, gitops-1.11, latest)
-gitops_operator_channel: "gitops-1.18"
+gitops_version: 1.18
+gitops_operator_channel: "gitops-{{ gitops_version }}"
 
 # The name of the CatalogSource
 gitops_operator_source: "redhat-operators"
@@ -10,9 +11,6 @@ gitops_operator_source_namespace: "openshift-marketplace"
 
 # The namespace to install the operator into
 gitops_operator_namespace: "openshift-gitops-operator"
-
-# Set to true if you want to wait for the ArgoCD instance to be ready after install
-wait_for_operator_ready: true
 
 # Target Cluster Set for Policies
 target_cluster_set: default

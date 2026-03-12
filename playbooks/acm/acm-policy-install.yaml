@@ -9,4 +9,5 @@
     KUBECONFIG: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
 
   roles:
-    - role: acm/policy_install_openshift_gitops
+    - role: acm/policy_install_openshift_gitops_1.18
+    - role: acm/policy_install_openshift_gitops_1.19
