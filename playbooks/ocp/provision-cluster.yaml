@@ -10,5 +10,5 @@
         cluster_address: "{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}"
 
     - include_role:
-        name: aws_provision_ocp_ipi
+        name: ocp/aws_provision_ocp_ipi
 ...

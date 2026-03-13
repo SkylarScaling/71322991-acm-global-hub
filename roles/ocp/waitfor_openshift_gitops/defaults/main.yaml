@@ -1,3 +1,0 @@
----
-# The namespace to install the operator into
-gitops_operator_namespace: "openshift-gitops-operator"
