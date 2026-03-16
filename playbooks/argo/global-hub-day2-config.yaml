@@ -1,0 +1,14 @@
+---
+- name: Install Day 2 Config via OpenShift GitOps (ArgoCD)
+  hosts: localhost
+  vars_files:
+    - ../group_vars/all.yaml
+  connection: local
+  gather_facts: false
+  environment:
+    KUBECONFIG: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
+
+  roles:
+    - role: argo/apps_install_acm
+    - role: argo/apps_install_coo
+    - role: argo/apps_install_mco

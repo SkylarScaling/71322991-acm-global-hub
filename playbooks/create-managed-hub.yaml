@@ -19,7 +19,7 @@
   ansible.builtin.import_playbook: ocp/install-argo.yaml
 
 - name: Install Day 2 Config via GitOps
-  ansible.builtin.import_playbook: argo/day2-config.yaml
+  ansible.builtin.import_playbook: argo/managed-hub-day2-config.yaml
 
 - name: Verify GitOps Deployments and Display Credentials
   hosts: localhost
@@ -56,9 +56,12 @@
       loop_control:
         label: "{{ item.metadata.name }}" # Keeps Ansible console output clean
 
-    - name: Install ACM Policy to Manage ArgoCD
+    - name: Install ACM Policies
       include_role:
-        name: acm/
+        name: "{{ item }}"
+      loop:
+        - acm/policy_install_openshift_gitops_1.18
+        - acm/policy_install_openshift_gitops_1.19
 
     # TODO Add argocd.version=1.19 label to local-cluster
 
