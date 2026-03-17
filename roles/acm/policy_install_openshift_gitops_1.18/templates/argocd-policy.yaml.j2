@@ -17,7 +17,7 @@ metadata:
   namespace: default
 spec:
   clusterSets:
-    - default
+    - "{{ target_cluster_set }}"
   predicates:
     - requiredClusterSelector:
         labelSelector:

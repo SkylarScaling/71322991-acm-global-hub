@@ -1,6 +1,7 @@
 ---
 - name: "Ensure the Operator Namespace Exists"
   kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
     api_version: v1
     kind: Namespace
     name: "{{ gitops_operator_namespace }}"
@@ -10,6 +11,7 @@
 # We only create one if we are using a custom namespace.
 - name: "Create OperatorGroup for GitOps (if custom namespace)"
   kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
     state: present
     definition:
       apiVersion: operators.coreos.com/v1
@@ -21,6 +23,7 @@
 
 - name: "Subscribe to OpenShift GitOps Operator"
   kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
     state: present
     definition:
       apiVersion: operators.coreos.com/v1alpha1
@@ -37,6 +40,7 @@
 
 - name: "Wait for GitOps Operator CSV to be installed"
   kubernetes.core.k8s_info:
+    kubeconfig: "{{ target_kubeconfig }}"
     api_version: operators.coreos.com/v1alpha1
     kind: Subscription
     name: openshift-gitops-operator
@@ -49,6 +53,7 @@
 
 - name: "Wait for the GitOps Operator Deployment to be Ready"
   kubernetes.core.k8s_info:
+    kubeconfig: "{{ target_kubeconfig }}"
     api_version: apps/v1
     kind: Deployment
     namespace: "{{ gitops_operator_namespace }}"
@@ -65,6 +70,7 @@
 
 - name: "Wait for the default openshift-gitops ArgoCD instance to be auto-created by the Operator"
   kubernetes.core.k8s_info:
+    kubeconfig: "{{ target_kubeconfig }}"
     api_version: argoproj.io/v1beta1
     kind: ArgoCD
     name: openshift-gitops # Default name for the OpenShift GitOps instance
@@ -77,6 +83,7 @@
 
 - name: "Teach ArgoCD how to evaluate OLM health (Patch)"
   kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
     state: present
     definition:
       apiVersion: argoproj.io/v1beta1

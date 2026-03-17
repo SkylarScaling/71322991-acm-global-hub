@@ -1,5 +1,5 @@
 apiVersion: v1
-baseDomain: {{ install_config.base_domain }}
+baseDomain: {{ base_domain }}
 compute:
 - architecture: amd64
   hyperthreading: Enabled
@@ -88,8 +88,8 @@ platform:
     userTags:
       {{ install_config.infra_tags | to_nice_yaml | indent(6) }}
 {% endif %}
-pullSecret: '{{ install_config.pull_secret | to_json }}'
-{% if install_config.ssh_key is defined %}
+pullSecret: '{{ pull_secret | to_json }}'
+{% if ssh_key is defined %}
 sshKey: |
-   {{ install_config.ssh_key }}
+   {{ ssh_key }}
 {% endif %}

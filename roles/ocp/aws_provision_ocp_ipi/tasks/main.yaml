@@ -76,7 +76,7 @@
     not kubeadmin_pwd_stat.stat.exists
 
 - debug:
-    msg: "Cluster console available at: https://console-openshift-console.apps.{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}/"
+    msg: "Cluster console available at: https://console-openshift-console.apps.{{ ocp_cluster.name }}.{{ base_domain }}/"
 
 - name: Get kubeconfig auth
   set_fact:

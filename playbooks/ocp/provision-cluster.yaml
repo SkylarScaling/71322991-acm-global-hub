@@ -7,7 +7,7 @@
   tasks:
     - name: Set Playbook Facts
       set_fact:
-        cluster_address: "{{ ocp_cluster.name }}.{{ ocp_cluster.base_domain }}"
+        cluster_address: "{{ ocp_cluster.name }}.{{ base_domain }}"
 
     - include_role:
         name: aws/aws_eip_quota

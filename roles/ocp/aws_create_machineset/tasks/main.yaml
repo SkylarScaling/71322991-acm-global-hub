@@ -15,6 +15,7 @@
 
 - name: Get Cluster Infrastructure Name (Cluster ID)
   kubernetes.core.k8s_info:
+    kubeconfig: "{{ target_kubeconfig }}"
     api_version: config.openshift.io/v1
     kind: Infrastructure
     name: cluster
@@ -26,6 +27,7 @@
 
 - name: Get all MachineSets in the machine-api namespace
   kubernetes.core.k8s_info:
+    kubeconfig: "{{ target_kubeconfig }}"
     api_version: machine.openshift.io/v1beta1
     kind: MachineSet
     namespace: openshift-machine-api

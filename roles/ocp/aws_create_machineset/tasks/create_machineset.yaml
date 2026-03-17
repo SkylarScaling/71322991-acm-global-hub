@@ -13,6 +13,7 @@
 
 - name: Apply the generated MachineSet YAML to OpenShift cluster
   kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
     state: present
     definition: "{{ lookup('template', 'machineset.yaml.j2') | from_yaml }}"
   when: az_replicas | int > 0

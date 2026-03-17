@@ -19,7 +19,7 @@
   ansible.builtin.import_playbook: ocp/install-argo.yaml
 
 - name: Install Day 2 Config via GitOps
-  ansible.builtin.import_playbook: argo/managed-hub-day2-config.yaml
+  ansible.builtin.import_playbook: argo/global-hub-day2-config.yaml
 
 - name: Verify GitOps Deployments and Display Credentials
   hosts: localhost
@@ -30,6 +30,7 @@
   tasks:
     - name: Discover all currently deployed Argo CD Applications
       kubernetes.core.k8s_info:
+        kubeconfig: "{{ target_kubeconfig }}"
         api_version: argoproj.io/v1alpha1
         kind: Application
         namespace: openshift-gitops
@@ -37,6 +38,7 @@
 
     - name: Wait for all discovered Argo CD Applications to be Healthy and Synced
       kubernetes.core.k8s_info:
+        kubeconfig: "{{ target_kubeconfig }}"
         api_version: argoproj.io/v1alpha1
         kind: Application
         name: "{{ item.metadata.name }}"
@@ -60,10 +62,7 @@
       include_role:
         name: "{{ item }}"
       loop:
-        - acm/policy_install_openshift_gitops_1.18
-        - acm/policy_install_openshift_gitops_1.19
-
-    # TODO Add argocd.version=1.19 label to local-cluster
+        - acm/policy_monitor_managed_hubs
 
     - name: Fetch kubeadmin password from install directory
       ansible.builtin.slurp:
