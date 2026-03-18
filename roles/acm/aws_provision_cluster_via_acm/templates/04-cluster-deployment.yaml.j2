@@ -3,6 +3,8 @@ kind: ClusterDeployment
 metadata:
   name: {{ ocp_cluster.name }}
   namespace: {{ ocp_cluster.name }}
+  labels:
+    cluster.open-cluster-management.io/clusterset: {{ target_cluster_set }}
 spec:
   baseDomain: {{ base_domain }}
   clusterName: {{ ocp_cluster.name }}

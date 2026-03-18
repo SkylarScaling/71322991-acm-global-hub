@@ -11,5 +11,5 @@
   roles:
     - role: argo/apps_install_acm
     - role: argo/apps_install_odf
-    - role: argo/apps_install_coo
     - role: argo/apps_install_mco
+#    - role: argo/apps_install_global_hub
