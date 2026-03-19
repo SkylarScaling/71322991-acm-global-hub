@@ -100,7 +100,7 @@ all:
         managed-cluster-1:
           ansible_connection: local
           regional_hub: regional-hub-1
-          target_cluster_set: managed-hubs
+          target_cluster_set: managed-clusters
           gitops_version: "1.18"
           ocp_cluster:
             name: "managed-cluster-1"
@@ -114,7 +114,7 @@ all:
         managed-cluster-2:
           ansible_connection: local
           regional_hub: regional-hub-2
-          target_cluster_set: managed-hubs
+          target_cluster_set: managed-clusters
           gitops_version: "1.19"
           ocp_cluster:
             name: "managed-cluster-2"
