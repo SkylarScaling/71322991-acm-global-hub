@@ -122,6 +122,28 @@
     - governance-policy-framework
     - config-policy-controller
 
+- name: Ensure Observability Namespace exists on the Spoke via ManifestWork
+  kubernetes.core.k8s:
+    # Target the Hub
+    kubeconfig: "{{ target_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: work.open-cluster-management.io/v1
+      kind: ManifestWork
+      metadata:
+        # Give the mailbox payload a unique name
+        name: "{{ ocp_cluster.name }}-observability-namespace"
+        # The namespace must be the Spoke's cluster name on the Hub
+        namespace: "{{ ocp_cluster.name }}"
+      spec:
+        workload:
+          manifests:
+            # Tell the Hub to mail this Namespace creation instruction to the Spoke
+            - apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: open-cluster-management-observability
+
 - name: Report successful provisioning
   ansible.builtin.debug:
     msg: "✅ Cluster {{ ocp_cluster.name }} has been successfully provisioned by ACM!"
