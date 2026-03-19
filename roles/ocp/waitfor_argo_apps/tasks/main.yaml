@@ -23,7 +23,7 @@
     - app_status.resources[0].status.health.status | default('Unknown') == 'Healthy'
     - app_status.resources[0].status.sync is defined
     - app_status.resources[0].status.sync.status | default('Unknown') == 'Synced'
-  retries: 20       # Wait up to 10 minutes per app (20 * 30 seconds)
+  retries: 40       # Wait up to 20 minutes per app (40 * 30 seconds)
   delay: 30
   loop: "{{ discovered_argo_apps.resources }}"
   loop_control:
