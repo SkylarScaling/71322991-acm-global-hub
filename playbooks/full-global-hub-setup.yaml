@@ -141,13 +141,12 @@
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
 
     # ==============================================================================
-    # RED HAT BUGFIX: Relax PersesDashboard CRD Validation
+    # RED HAT BUGFIX: Relax PersesDashboard CRD Validation (Sniper Execution)
     # ==============================================================================
     - name: Apply Red Hat Observability CRD Bugfix
       block:
         - name: Wait for PersesDashboard CRD to be installed on the Spoke
           kubernetes.core.k8s_info:
-            # Connect directly to the Spoke using the newly extracted kubeconfig
             kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
             api_version: apiextensions.k8s.io/v1
             kind: CustomResourceDefinition
@@ -156,21 +155,17 @@
           until:
             - perses_crd.resources is defined
             - perses_crd.resources | length > 0
-          retries: 60  # Wait up to 10 minutes for the Hub to push the CRD
+          retries: 60
           delay: 10
 
-        - name: Patch PersesDashboard CRD to remove strict validation
-          kubernetes.core.k8s_json_patch:
-            kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
-            api_version: apiextensions.k8s.io/v1
-            kind: CustomResourceDefinition
-            name: persesdashboards.perses.dev
-            patch:
-              - op: remove
-                path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/required
-          # If Red Hat fixes this bug in a future version and the 'required' field
-          # no longer exists, we don't want the playbook to fail, so we ignore errors here.
-          ignore_errors: true
+    - name: Patch CRD and instantly trigger Hub ManifestWork
+      ansible.builtin.shell: |
+        # 1. Patch the local Spoke CRD
+        KUBECONFIG="{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig" {{ bin_dir }}/oc patch crd persesdashboards.perses.dev --type='json' -p='[{"op": "remove", "path": "/spec/versions/0/schema/openAPIV3Schema/properties/spec/required"}]'
+        
+        # 2. Instantly kick the mailbox on the Global Hub
+        KUBECONFIG="{{ global_hub_kubeconfig }}" {{ bin_dir }}/oc delete manifestwork addon-multicluster-observability-addon-deploy-0 -n "{{ ocp_cluster.name }}"
+      ignore_errors: true
 
     # Now that we have the Regional Hub's kubeconfig locally, we can set up Day 2
     - name: Set Regional Hub Kubeconfig Fact
@@ -242,13 +237,12 @@
             target_kubeconfig: "{{ parent_hub_kubeconfig }}"
 
     # ==============================================================================
-    # RED HAT BUGFIX: Relax PersesDashboard CRD Validation
+    # RED HAT BUGFIX: Relax PersesDashboard CRD Validation (Sniper Execution)
     # ==============================================================================
     - name: Apply Red Hat Observability CRD Bugfix
       block:
         - name: Wait for PersesDashboard CRD to be installed on the Spoke
           kubernetes.core.k8s_info:
-            # Connect directly to the Spoke using the newly extracted kubeconfig
             kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
             api_version: apiextensions.k8s.io/v1
             kind: CustomResourceDefinition
@@ -257,20 +251,16 @@
           until:
             - perses_crd.resources is defined
             - perses_crd.resources | length > 0
-          retries: 60  # Wait up to 10 minutes for the Hub to push the CRD
+          retries: 60
           delay: 10
 
-        - name: Patch PersesDashboard CRD to remove strict validation
-          kubernetes.core.k8s_json_patch:
-            kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
-            api_version: apiextensions.k8s.io/v1
-            kind: CustomResourceDefinition
-            name: persesdashboards.perses.dev
-            patch:
-              - op: remove
-                path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/required
-          # If Red Hat fixes this bug in a future version and the 'required' field
-          # no longer exists, we don't want the playbook to fail, so we ignore errors here.
+        - name: Patch CRD and instantly trigger Hub ManifestWork
+          ansible.builtin.shell: |
+            # 1. Patch the local Spoke CRD
+            KUBECONFIG="{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig" {{ bin_dir }}/oc patch crd persesdashboards.perses.dev --type='json' -p='[{"op": "remove", "path": "/spec/versions/0/schema/openAPIV3Schema/properties/spec/required"}]'
+            
+            # 2. Instantly kick the mailbox on the assigned Regional Hub
+            KUBECONFIG="{{ parent_hub_kubeconfig }}" {{ bin_dir }}/oc delete manifestwork addon-multicluster-observability-addon-deploy-0 -n "{{ ocp_cluster.name }}"
           ignore_errors: true
 
 # ==============================================================================
