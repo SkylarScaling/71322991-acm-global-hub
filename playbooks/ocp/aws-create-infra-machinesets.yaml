@@ -11,7 +11,7 @@
   tasks:
     - name: Create Infrastructure Node Pool
       ansible.builtin.include_role:
-        name: aws_create_machineset
+        name: ocp/aws_create_machineset
       vars:
         pool_name: "infra"
         pool_replicas: "{{ install_config.infra.replicas }}"
@@ -24,7 +24,7 @@
 
     - name: Create ODF Storage Node Pool
       ansible.builtin.include_role:
-        name: aws_create_machineset
+        name: ocp/aws_create_machineset
       vars:
         pool_name: "storage"
         pool_replicas: "{{ install_config.storage.replicas }}"

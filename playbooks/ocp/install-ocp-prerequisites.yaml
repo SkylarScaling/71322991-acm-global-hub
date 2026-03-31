@@ -5,8 +5,6 @@
   hosts: localhost
   vars_files:
     - ../group_vars/all.yaml
-  tasks:
-    - name: Download required utilities
-      include_role:
-        name: install_ocp_prerequisites
+  roles:
+    - ocp/install_ocp_prerequisites
 ...
