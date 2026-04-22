@@ -143,29 +143,29 @@
     # ==============================================================================
     # RED HAT BUGFIX: Relax PersesDashboard CRD Validation (Sniper Execution)
     # ==============================================================================
-    - name: Apply Red Hat Observability CRD Bugfix
-      block:
-        - name: Wait for PersesDashboard CRD to be installed on the Spoke
-          kubernetes.core.k8s_info:
-            kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
-            api_version: apiextensions.k8s.io/v1
-            kind: CustomResourceDefinition
-            name: persesdashboards.perses.dev
-          register: perses_crd
-          until:
-            - perses_crd.resources is defined
-            - perses_crd.resources | length > 0
-          retries: 60
-          delay: 10
-
-    - name: Patch CRD and instantly trigger Hub ManifestWork
-      ansible.builtin.shell: |
-        # 1. Patch the local Spoke CRD
-        KUBECONFIG="{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig" {{ bin_dir }}/oc patch crd persesdashboards.perses.dev --type='json' -p='[{"op": "remove", "path": "/spec/versions/0/schema/openAPIV3Schema/properties/spec/required"}]'
-        
-        # 2. Instantly kick the mailbox on the Global Hub
-        KUBECONFIG="{{ global_hub_kubeconfig }}" {{ bin_dir }}/oc delete manifestwork addon-multicluster-observability-addon-deploy-0 -n "{{ ocp_cluster.name }}"
-      ignore_errors: true
+#    - name: Apply Red Hat Observability CRD Bugfix
+#      block:
+#        - name: Wait for PersesDashboard CRD to be installed on the Spoke
+#          kubernetes.core.k8s_info:
+#            kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
+#            api_version: apiextensions.k8s.io/v1
+#            kind: CustomResourceDefinition
+#            name: persesdashboards.perses.dev
+#          register: perses_crd
+#          until:
+#            - perses_crd.resources is defined
+#            - perses_crd.resources | length > 0
+#          retries: 60
+#          delay: 10
+#
+#    - name: Patch CRD and instantly trigger Hub ManifestWork
+#      ansible.builtin.shell: |
+#        # 1. Patch the local Spoke CRD
+#        KUBECONFIG="{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig" {{ bin_dir }}/oc patch crd persesdashboards.perses.dev --type='json' -p='[{"op": "remove", "path": "/spec/versions/0/schema/openAPIV3Schema/properties/spec/required"}]'
+#
+#        # 2. Instantly kick the mailbox on the Global Hub
+#        KUBECONFIG="{{ global_hub_kubeconfig }}" {{ bin_dir }}/oc delete manifestwork addon-multicluster-observability-addon-deploy-0 -n "{{ ocp_cluster.name }}"
+#      ignore_errors: true
 
     # Now that we have the Regional Hub's kubeconfig locally, we can set up Day 2
     - name: Set Regional Hub Kubeconfig Fact
