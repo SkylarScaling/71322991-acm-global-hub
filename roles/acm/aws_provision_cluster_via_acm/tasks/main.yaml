@@ -117,7 +117,8 @@
         name: "{{ item }}"
         namespace: "{{ ocp_cluster.name }}"
       spec:
-        installNamespace: open-cluster-management-agent-addon
+        # Prevent collisions with local-cluster on Regional Hubs by isolating the Global Hub's agents
+        installNamespace: "{{ 'global-hub-policy-agents' if is_regional_hub | default(false) | bool else 'open-cluster-management-agent-addon' }}"
   loop:
     - governance-policy-framework
     - config-policy-controller

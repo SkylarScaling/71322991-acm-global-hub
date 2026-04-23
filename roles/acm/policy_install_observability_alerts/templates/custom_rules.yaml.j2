@@ -1,0 +1,22 @@
+groups:
+  - name: truist-enterprise-alerts
+    rules:
+      - alert: ManagedClusterOffline
+        # This is an Ansible variable, let it render
+        expr: apiserver_request_total{job="apiserver"} == 0
+        for: {{ spoke_offline_threshold_minutes }}
+        labels:
+          severity: critical
+        annotations:
+          # Wrap the Prometheus variables in 'raw' tags so Ansible ignores them
+          summary: "Cluster {% raw %}{{ $labels.cluster }}{% endraw %} is unreachable."
+          description: "The Regional Hub has lost contact with the Spoke."
+      - alert: ESPJobFailed
+        expr: kube_job_failed{namespace="esp-job-test-application"} > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: esp-batch
+        annotations:
+          summary: "ESP Job Failed on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Job {% raw %}{{ $labels.job_name }}{% endraw %} failed to complete."

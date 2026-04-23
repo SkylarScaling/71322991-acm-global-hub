@@ -1,0 +1,43 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: global-to-regional-alerts-policy
+  namespace: default
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: regional-observability-config
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            # PAYLOAD 1: The Alertmanager Config (Hidden via Base64)
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: alertmanager-config
+                  namespace: open-cluster-management-observability
+                type: Opaque
+                data:
+                  # We use the Ansible 'b64encode' filter so ACM never sees the raw text
+                  alertmanager.yaml: {{ lookup('template', 'alertmanager.yaml.j2') | b64encode }}
+
+            # PAYLOAD 2: The Custom Rules (Hidden via Base64)
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: thanos-ruler-custom-rules
+                  namespace: open-cluster-management-observability
+                # Note: ConfigMaps use 'binaryData' for base64 payloads
+                binaryData:
+                  custom_rules.yaml: {{ lookup('template', 'custom_rules.yaml.j2') | b64encode }}
