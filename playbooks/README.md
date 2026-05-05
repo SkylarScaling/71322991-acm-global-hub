@@ -37,6 +37,15 @@ all:
       aws_access_key_id: <aws_access_key_id>
       aws_secret_access_key: <aws_secret_access_key>
       aws_region: <aws_region>
+    smtp:
+      host: "smtp.gmail.com"
+      port: "587"
+      from_address: "<your_email>@gmail.com"
+      require_tls: "true"
+      username: "<your_username>@gmail.com"
+      app_password: "<16 char app password>"
+      default_to: "<default_email>@gmail.com"
+      esp_to: "<esp_rule_email>@gmail.com"
   children:
     hub_cluster:
       hosts:
