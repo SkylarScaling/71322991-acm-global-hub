@@ -95,6 +95,14 @@
           vars:
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
 
+    - name: Deploy Custom Executive KPI Dashboards
+      block:
+        - ansible.builtin.include_role:
+            name: acm/global_hub_custom_dashboards
+          vars:
+            # We apply this directly to the Global Hub so it appears in the central Grafana
+            target_kubeconfig: "{{ global_hub_kubeconfig }}"
+
 #    - name: Deploy ACM Policies to monitor Regional Hubs
 #      ansible.builtin.include_role:
 #        name: acm/policy_monitor_managed_hubs
@@ -209,6 +217,13 @@
             # We explicitly tell the Regional Hubs to target the Tier 3 cluster set
             target_cluster_set: "managed-clusters"
             target_kubeconfig: "{{ regional_hub_kubeconfig }}"
+
+    - name: Wire Regional Data Sources into Global Grafana
+      block:
+        - ansible.builtin.include_role:
+            name: acm/global_hub_grafana_datasources
+          vars:
+            target_kubeconfig: "{{ global_hub_kubeconfig }}"
 
 # ==============================================================================
 # TIER 3: Provision Managed Clusters (via ACM on assigned Regional Hub)

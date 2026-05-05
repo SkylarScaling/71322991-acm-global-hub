@@ -1,0 +1,6 @@
+---
+- name: Deploy Custom KPI Dashboards to Global Hub
+  kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
+    state: present
+    template: kpi-dashboard.yaml.j2

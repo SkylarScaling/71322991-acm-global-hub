@@ -1,0 +1,66 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: caas-executive-kpi-dashboard
+  namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: Custom
+data:
+  caas-kpis.json: |-
+    {% raw %}
+    {
+      "title": "CaaS Executive KPIs",
+      "tags": ["truist", "kpi", "executive"],
+      "timezone": "browser",
+      "schemaVersion": 26,
+      "refresh": "1m",
+      "panels": [
+        {
+          "title": "Global Memory Saturation (%)",
+          "type": "gauge",
+          "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "(sum(node_memory_MemTotal_bytes) - sum(node_memory_MemFree_bytes + node_memory_Cached_bytes + node_memory_Buffers_bytes)) / sum(node_memory_MemTotal_bytes) * 100",
+              "legendFormat": "Memory Used %"
+            }
+          ]
+        },
+        {
+          "title": "Fleet-wide Container Restarts (Last 1h)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum by (cluster) (increase(kube_pod_container_status_restarts_total[1h])) > 0",
+              "legendFormat": "{{cluster}}"
+            }
+          ]
+        },
+        {
+          "title": "Failed Velero Backups (24h)",
+          "type": "stat",
+          "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(increase(velero_backup_failure_total[24h]))",
+              "legendFormat": "Failed Jobs"
+            }
+          ]
+        },
+        {
+          "title": "Critical ACS Vulnerabilities",
+          "type": "stat",
+          "gridPos": { "h": 8, "w": 6, "x": 6, "y": 8 },
+          "targets": [
+            {
+              "expr": "sum(rox_vulnerability_count{severity=\"CRITICAL\"})",
+              "legendFormat": "Critical CVEs"
+            }
+          ]
+        }
+      ]
+    }
+    {% endraw %}
