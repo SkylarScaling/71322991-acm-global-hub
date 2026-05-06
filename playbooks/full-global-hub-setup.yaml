@@ -165,7 +165,26 @@
             name: open-cluster-management:managedcluster:addon-governance-policy-framework
           subjects:
             - kind: User
-              name: "system:open-cluster-management:cluster:local-cluster:addon:governance-policy-framework:agent:governance-policy-framework"
+              name: "system:open-cluster-management:cluster:{{ ocp_cluster.name }}:addon:governance-policy-framework:agent:governance-policy-framework"
+              apiGroup: rbac.authorization.k8s.io
+
+    - name: Grant Hosted Search Collector Agent permission to read its mailbox
+      kubernetes.core.k8s:
+        kubeconfig: "{{ global_hub_kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: hosted-search-collector-reader
+            namespace: "{{ ocp_cluster.name }}"
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: open-cluster-management:managedcluster:addon-search-collector
+          subjects:
+            - kind: User
+              name: "system:open-cluster-management:cluster:{{ ocp_cluster.name }}:addon:search-collector:agent:search-collector"
               apiGroup: rbac.authorization.k8s.io
 
     - name: Extract Kubeconfig for Regional Hub
