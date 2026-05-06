@@ -1,13 +1,17 @@
 ---
-- name: Wait for the native Search operator to initialize the base add-on
+- name: Wait for the Global Hub (MultiClusterHub) to be fully Running
   kubernetes.core.k8s_info:
     kubeconfig: "{{ target_kubeconfig }}"
-    api_version: addon.open-cluster-management.io/v1alpha1
-    kind: ClusterManagementAddOn
-    name: search-collector
-  register: search_cma
-  until: search_cma.resources | length > 0
-  retries: 60  # Wait up to 10 minutes for the operator to scaffold the object
+    api_version: operator.open-cluster-management.io/v1
+    kind: MultiClusterHub
+    name: multiclusterhub
+    namespace: open-cluster-management
+  register: mch_status
+  until:
+    - mch_status.resources | length > 0
+    - mch_status.resources[0].status is defined
+    - mch_status.resources[0].status.phase | default('') == 'Running'
+  retries: 180  # Wait up to 30 minutes for the Hub to fully initialize
   delay: 10
 
 - name: Configure Regional Hub Add-on Strategies (On Global Hub)
