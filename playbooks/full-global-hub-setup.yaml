@@ -104,6 +104,13 @@
 #      environment:
 #        KUBECONFIG: "{{ global_hub_kubeconfig }}"
 
+    - name: Configure Regional Hub Addons
+      block:
+        - ansible.builtin.include_role:
+            name: acm/configure_regional_hub_addons
+          vars:
+            target_kubeconfig: "{{ global_hub_kubeconfig }}"
+
     - name: Fetch Global Hub kubeadmin password
       ansible.builtin.slurp:
         src: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeadmin-password"
@@ -208,6 +215,13 @@
           vars:
             # We explicitly tell the Regional Hubs to target the Tier 3 cluster set
             target_cluster_set: "managed-clusters"
+            target_kubeconfig: "{{ regional_hub_kubeconfig }}"
+
+    - name: Configure Managed Cluster Addons
+      block:
+        - ansible.builtin.include_role:
+            name: acm/configure_managed_cluster_addons
+          vars:
             target_kubeconfig: "{{ regional_hub_kubeconfig }}"
 
 # ==============================================================================

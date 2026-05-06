@@ -1,0 +1,10 @@
+---
+- name: Configure Regional Hub Add-on Strategies (On Global Hub)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
+    state: present
+    template: "regional-hubs-strategy.yaml.j2"
+  loop:
+    - governance-policy-framework
+    - config-policy-controller
+    - search-collector

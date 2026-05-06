@@ -1,0 +1,64 @@
+---
+# 1. NEW: Bind the default cluster set so the local-cluster placement works
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: default
+  namespace: default
+spec:
+  clusterSet: default
+
+---
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: AddOnDeploymentConfig
+metadata:
+  name: regional-hub-addon-config
+  namespace: default
+spec:
+  agentInstallNamespace: global-hub-policy-agents
+
+---
+# 2. UPDATED: The Placement for the Global Hub's own local-cluster
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: local-cluster-addon-placement
+  namespace: default
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            local-cluster: "true"
+
+---
+# 3. The Placement for the Regional Hubs
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: regional-hubs-addon-placement
+  namespace: default
+spec:
+  clusterSets:
+    - regional-hubs
+
+---
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ClusterManagementAddOn
+metadata:
+  name: "{{ item }}"
+spec:
+  installStrategy:
+    type: Placements
+    placements:
+      - name: regional-hubs-addon-placement
+        namespace: default
+        configs:
+          - group: addon.open-cluster-management.io
+            resource: addondeploymentconfigs
+            name: regional-hub-addon-config
+            namespace: default
+      - name: local-cluster-addon-placement
+        namespace: default
