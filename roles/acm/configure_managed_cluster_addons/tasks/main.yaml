@@ -14,17 +14,6 @@
   retries: 180  # Wait up to 30 minutes for the Hub to fully initialize
   delay: 10
 
-- name: Wait for the native Search operator to initialize the base add-on
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ target_kubeconfig }}"
-    api_version: addon.open-cluster-management.io/v1alpha1
-    kind: ClusterManagementAddOn
-    name: search-collector
-  register: search_cma
-  until: search_cma.resources | length > 0
-  retries: 60  # Wait up to 10 minutes for the operator to scaffold the object
-  delay: 10
-
 - name: Configure Managed Cluster Add-on Strategies (On Regional Hub)
   kubernetes.core.k8s:
     kubeconfig: "{{ target_kubeconfig }}"
@@ -33,4 +22,3 @@
   loop:
     - governance-policy-framework
     - config-policy-controller
-    - search-collector

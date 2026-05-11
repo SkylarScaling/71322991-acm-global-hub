@@ -81,6 +81,14 @@
           vars:
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
 
+    - name: Configure Search Add-on for Global Hub (local-cluster)
+      ansible.builtin.include_role:
+        name: acm/configure_search_addon
+      vars:
+        target_kubeconfig: "{{ global_hub_kubeconfig }}"
+        search_target_namespaces:
+          - "local-cluster"
+
     - name: Wait For Argo Apps to Install
       block:
         - ansible.builtin.include_role:
@@ -146,6 +154,14 @@
           vars:
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
             is_regional_hub: true
+
+    - name: Configure Search Add-on for Regional Hub on Global Hub
+      ansible.builtin.include_role:
+        name: acm/configure_search_addon
+      vars:
+        target_kubeconfig: "{{ global_hub_kubeconfig }}"
+        search_target_namespaces:
+          - "{{ ocp_cluster.name }}"
 
     - name: Grant Hosted Governance Framework Agent permission to read its mailbox
       kubernetes.core.k8s:
@@ -243,6 +259,14 @@
           vars:
             target_kubeconfig: "{{ regional_hub_kubeconfig }}"
 
+    - name: Configure Search Add-on for Regional Hub (local-cluster)
+      ansible.builtin.include_role:
+        name: acm/configure_search_addon
+      vars:
+        target_kubeconfig: "{{ regional_hub_kubeconfig }}"
+        search_target_namespaces:
+          - "local-cluster"
+
 # ==============================================================================
 # TIER 3: Provision Managed Clusters (via ACM on assigned Regional Hub)
 # ==============================================================================
@@ -269,6 +293,14 @@
             name: acm/admin_extract_spoke_credentials
           vars:
             target_kubeconfig: "{{ parent_hub_kubeconfig }}"
+
+    - name: Configure Search Add-on for Managed Cluster on Regional Hub
+      ansible.builtin.include_role:
+        name: acm/configure_search_addon
+      vars:
+        target_kubeconfig: "{{ parent_hub_kubeconfig }}"
+        search_target_namespaces:
+          - "{{ ocp_cluster.name }}"
 
 # ==============================================================================
 # SUMMARY: Final Environment Handoff
