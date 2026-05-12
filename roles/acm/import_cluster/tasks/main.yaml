@@ -9,13 +9,13 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ hub_kubeconfig }}"
     state: present
-    template: "02-managed-cluster.yaml.j2"
+    template: "01-managed-cluster.yaml.j2"
 
 - name: Create Spoke Cluster Namespace on Hub
   kubernetes.core.k8s:
     kubeconfig: "{{ hub_kubeconfig }}"
     state: present
-    template: "01-namespace.yaml.j2"
+    template: "02-namespace.yaml.j2"
 
 - name: Create auto-import-secret on Hub
   kubernetes.core.k8s:
