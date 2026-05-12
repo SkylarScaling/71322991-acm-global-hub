@@ -1,5 +1,22 @@
 ---
-# 1. NEW: Bind the default cluster set so the local-cluster placement works
+# 1. Ensure the Regional Hubs ClusterSet exists
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSet
+metadata:
+  name: regional-hubs
+
+---
+# 2. NEW: Bind the regional-hubs cluster set to the default namespace
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: regional-hubs
+  namespace: default
+spec:
+  clusterSet: regional-hubs
+
+---
+# 3. Bind the default cluster set so the local-cluster placement works
 apiVersion: cluster.open-cluster-management.io/v1beta2
 kind: ManagedClusterSetBinding
 metadata:
@@ -18,7 +35,7 @@ spec:
   agentInstallNamespace: global-hub-policy-agents
 
 ---
-# 2. UPDATED: The Placement for the Global Hub's own local-cluster
+# The Placement for the Global Hub's own local-cluster
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
@@ -34,7 +51,7 @@ spec:
             local-cluster: "true"
 
 ---
-# 3. The Placement for the Regional Hubs
+# The Placement for the Regional Hubs
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:

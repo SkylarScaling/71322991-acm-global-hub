@@ -150,6 +150,41 @@
       ansible.builtin.set_fact:
         regional_hub_kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
 
+    - name: Create Infrastructure Node Pool
+      block:
+        - ansible.builtin.include_role:
+            name: ocp/aws_create_machineset
+          vars:
+            target_kubeconfig: "{{ regional_hub_kubeconfig }}"
+            pool_name: "infra"
+            pool_replicas: "{{ install_config.infra.replicas }}"
+            pool_instance_type: "{{ install_config.infra.instance_type }}"
+            pool_labels:
+              node-role.kubernetes.io/infra: ""
+            pool_taints:
+              - effect: NoSchedule
+                key: node-role.kubernetes.io/infra
+      when: install_config.infra is defined
+
+    - name: Create ODF Storage Node Pool
+      block:
+        - ansible.builtin.include_role:
+            name: ocp/aws_create_machineset
+          vars:
+            target_kubeconfig: "{{ regional_hub_kubeconfig }}"
+            pool_name: "storage"
+            pool_replicas: "{{ install_config.storage.replicas }}"
+            pool_instance_type: "{{ install_config.storage.instance_type }}"
+            pool_labels:
+              cluster.ocs.openshift.io/openshift-storage: ""
+              node-role.kubernetes.io/worker: ""
+              node-role.kubernetes.io/storage: ""
+            pool_taints:
+              - effect: NoSchedule
+                key: node.ocs.openshift.io/storage
+                value: "true"
+      when: install_config.storage is defined
+
     - name: Import Regional Hub into the Global Hub
       ansible.builtin.include_role:
         name: acm/import_cluster
