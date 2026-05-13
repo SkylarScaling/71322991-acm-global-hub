@@ -103,26 +103,6 @@
     - cd_status.resources[0].status.conditions is defined
     - cd_status.resources[0].status.conditions | selectattr('type', 'equalto', 'ProvisionFailed') | selectattr('status', 'equalto', 'True') | list | length > 0
 
-# ==============================================================================
-# ENABLE ACM ADD-ONS
-# ==============================================================================
-- name: Enable Governance Policy Add-ons on the Managed Cluster
-  kubernetes.core.k8s:
-    kubeconfig: "{{ target_kubeconfig }}"
-    state: present
-    definition:
-      apiVersion: addon.open-cluster-management.io/v1alpha1
-      kind: ManagedClusterAddOn
-      metadata:
-        name: "{{ item }}"
-        namespace: "{{ ocp_cluster.name }}"
-      spec:
-        # Prevent collisions with local-cluster on Regional Hubs by isolating the Global Hub's agents
-        installNamespace: "{{ 'global-hub-policy-agents' if is_regional_hub | default(false) | bool else 'open-cluster-management-agent-addon' }}"
-  loop:
-    - governance-policy-framework
-    - config-policy-controller
-
 - name: Ensure Observability Namespace exists on the Spoke via ManifestWork
   kubernetes.core.k8s:
     # Target the Hub
