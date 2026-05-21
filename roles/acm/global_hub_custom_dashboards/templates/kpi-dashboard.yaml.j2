@@ -23,7 +23,7 @@ data:
           "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
           "targets": [
             {
-              "expr": "(sum(node_memory_MemTotal_bytes) - sum(node_memory_MemFree_bytes + node_memory_Cached_bytes + node_memory_Buffers_bytes)) / sum(node_memory_MemTotal_bytes) * 100",
+              "expr": "100 - (sum(node_memory_MemAvailable_bytes) / sum(node_memory_MemTotal_bytes) * 100)",
               "legendFormat": "Memory Used %"
             }
           ]

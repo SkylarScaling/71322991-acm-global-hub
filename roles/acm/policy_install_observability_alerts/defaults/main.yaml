@@ -2,7 +2,6 @@
 # ==============================================================================
 # ROUTING INTEGRATIONS (Pulled from global inventory variables)
 # ==============================================================================
-alerting_webhook_url: "https://webhook.site/c1e7f1c2-b70e-407f-8e81-e48fbbb0c189"
 
 # SMTP Mapping
 alerting_smtp_host: "{{ smtp.host }}"
