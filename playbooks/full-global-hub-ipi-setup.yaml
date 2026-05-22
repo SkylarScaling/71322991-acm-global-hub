@@ -101,13 +101,6 @@
           vars:
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
 
-    - name: Deploy Custom Executive KPI Dashboards
-      block:
-        - ansible.builtin.include_role:
-            name: acm/global_hub_custom_dashboards
-          vars:
-            target_kubeconfig: "{{ global_hub_kubeconfig }}"
-
     - name: Configure Regional Hub Addons
       block:
         - ansible.builtin.include_role:
@@ -284,6 +277,13 @@
             target_cluster_set: "managed-clusters"
             target_kubeconfig: "{{ regional_hub_kubeconfig }}"
 
+    - name: Deploy Custom Executive KPI Dashboards
+      block:
+        - ansible.builtin.include_role:
+            name: acm/global_hub_custom_dashboards
+          vars:
+            target_kubeconfig: "{{ regional_hub_kubeconfig }}"
+
     - name: Configure Managed Cluster Addons
       block:
         - ansible.builtin.include_role:
@@ -341,6 +341,16 @@
         spoke_kubeconfig: "{{ managed_cluster_kubeconfig }}"
         cluster_name: "{{ ocp_cluster.name }}"
         target_cluster_set: "managed-clusters"
+
+    - name: Ensure Observability Namespace exists on the Spoke
+      kubernetes.core.k8s:
+        kubeconfig: "{{ managed_cluster_kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: open-cluster-management-observability
 
     - name: Configure Search Add-on for Managed Cluster on Regional Hub
       ansible.builtin.include_role:
