@@ -273,6 +273,7 @@
           loop:
             - acm/policy_install_openshift_gitops_1.18
             - acm/policy_install_openshift_gitops_1.19
+            - acm/policy_enable_uwm
           vars:
             target_cluster_set: "managed-clusters"
             target_kubeconfig: "{{ regional_hub_kubeconfig }}"

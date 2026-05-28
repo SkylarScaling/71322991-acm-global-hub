@@ -57,7 +57,14 @@ spec:
                 data:
                   metrics_list.yaml: |
                     names:
+                      - container_cpu_usage_seconds_total
                       - kube_job_status_failed
                       - kube_pod_container_status_restarts_total
                       - velero_backup_failure_total
                       - rox_vulnerability_count
+                      - node_memory_MemTotal_bytes
+                      - node_memory_MemAvailable_bytes
+                      - kube_pod_container_resource_requests
+                      - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate
+                      - node_memory_Active_bytes
+                      - kube_node_status_allocatable

@@ -11,30 +11,30 @@ data:
   caas-kpis.json: |-
     {% raw %}
     {
-      "title": "CaaS Executive KPIs",
-      "tags": ["truist", "kpi", "executive"],
+      "title": "CaaS Executive KPIs & Capacity",
+      "tags": ["truist", "kpi", "executive", "capacity"],
       "timezone": "browser",
       "schemaVersion": 26,
       "refresh": "1m",
       "panels": [
         {
-          "title": "Global Memory Saturation (%)",
+          "title": "Global Fleet Memory Saturation (%)",
           "type": "gauge",
           "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
           "targets": [
             {
-              "expr": "100 - (sum(node_memory_MemAvailable_bytes) / sum(node_memory_MemTotal_bytes) * 100)",
+              "expr": "(sum(cluster:memory_usage_bytes:sum) / sum(cluster:capacity_memory_bytes:sum)) * 100",
               "legendFormat": "Memory Used %"
             }
           ]
         },
         {
-          "title": "Fleet-wide Container Restarts (Last 1h)",
+          "title": "Fleet-wide Container Restarts (Last 30m)",
           "type": "timeseries",
           "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
           "targets": [
             {
-              "expr": "sum by (cluster) (increase(kube_pod_container_status_restarts_total[1h])) > 0",
+              "expr": "sum by (cluster) (increase(kube_pod_container_status_restarts_total[30m])) > 0",
               "legendFormat": "{{cluster}}"
             }
           ]
@@ -45,7 +45,7 @@ data:
           "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 },
           "targets": [
             {
-              "expr": "sum(increase(velero_backup_failure_total[24h]))",
+              "expr": "sum(increase(velero_backup_failure_total[24h])) OR vector(0)",
               "legendFormat": "Failed Jobs"
             }
           ]
@@ -56,8 +56,45 @@ data:
           "gridPos": { "h": 8, "w": 6, "x": 6, "y": 8 },
           "targets": [
             {
-              "expr": "sum(rox_vulnerability_count{severity=\"CRITICAL\"})",
+              "expr": "sum(rox_vulnerability_count{severity=\"CRITICAL\"}) OR vector(0)",
               "legendFormat": "Critical CVEs"
+            }
+          ]
+        },
+        {
+          "title": "Fleet-wide CPU Slack (Requested vs Actual)",
+          "type": "timeseries",
+          "gridPos": { "h": 10, "w": 12, "x": 0, "y": 16 },
+          "targets": [
+            {
+              "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"})",
+              "legendFormat": "Requested CPU Cores"
+            },
+            {
+              "expr": "sum(cluster:cpu_usage_cores:sum)",
+              "legendFormat": "Actual CPU Consumption"
+            }
+          ]
+        },
+        {
+          "title": "Top 5 Over-Provisioned Clusters (Wasted CPU Cores)",
+          "type": "barchart",
+          "gridPos": { "h": 10, "w": 12, "x": 12, "y": 16 },
+          "targets": [
+            {
+              "expr": "topk(5, sum by (cluster) (kube_pod_container_resource_requests{resource=\"cpu\"}) - sum by (cluster) (cluster:cpu_usage_cores:sum))",
+              "legendFormat": "{{cluster}}"
+            }
+          ]
+        },
+        {
+          "title": "Cluster Right-Sizing (Clusters utilizing < 30% of Requested CPU)",
+          "type": "table",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
+          "targets": [
+            {
+              "expr": "((sum by (cluster) (cluster:cpu_usage_cores:sum) / sum by (cluster) (kube_pod_container_resource_requests{resource=\"cpu\"})) * 100) < 30",
+              "legendFormat": "% CPU Utilized"
             }
           ]
         }

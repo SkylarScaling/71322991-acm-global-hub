@@ -255,6 +255,7 @@
           loop:
             - acm/policy_install_openshift_gitops_1.18
             - acm/policy_install_openshift_gitops_1.19
+            - acm/policy_enable_uwm
           vars:
             # We explicitly tell the Regional Hubs to target the Tier 3 cluster set
             target_cluster_set: "managed-clusters"

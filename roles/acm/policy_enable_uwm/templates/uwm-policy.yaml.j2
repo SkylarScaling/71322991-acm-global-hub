@@ -1,0 +1,82 @@
+---
+# Namespace Permission: Allows this Hub namespace to see the Spoke clusters
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: "{{ target_cluster_set }}"
+  namespace: default
+spec:
+  clusterSet: "{{ target_cluster_set }}"
+
+---
+# Placement
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: uwm-placement
+  namespace: default
+spec:
+  clusterSets:
+    - "{{ target_cluster_set }}"
+
+---
+# Policy: Enable User Workload Monitoring (Enforce)
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: enforce-uwm-enablement
+  namespace: default
+  annotations:
+    policy.open-cluster-management.io/standards: Configuration Baseline
+    policy.open-cluster-management.io/categories: CM Configuration Management
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: configure-cluster-monitoring
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: cluster-monitoring-config
+                  namespace: openshift-monitoring
+                data:
+                  config.yaml: |
+                    enableUserWorkload: true
+
+---
+# PolicySet
+apiVersion: policy.open-cluster-management.io/v1beta1
+kind: PolicySet
+metadata:
+  name: observability-enhancements
+  namespace: default
+spec:
+  description: "Deploys advanced observability configurations to managed clusters"
+  policies:
+    - enforce-uwm-enablement
+
+---
+# PlacementBinding
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: uwm-placement-binding
+  namespace: default
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: uwm-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: PolicySet
+    name: observability-enhancements
