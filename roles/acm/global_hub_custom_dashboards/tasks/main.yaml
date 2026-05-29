@@ -1,6 +1,10 @@
 ---
-- name: Deploy Custom KPI Dashboards to Global Hub
+- name: Deploy Custom Dashboards to Global Hub
   kubernetes.core.k8s:
     kubeconfig: "{{ target_kubeconfig }}"
     state: present
-    template: kpi-dashboard.yaml.j2
+    template: "{{ item }}"
+  loop:
+    - kpi-dashboard.yaml.j2
+    - argocd-dashboard.yaml.j2
+    - k8s-dashboard.yaml.j2
