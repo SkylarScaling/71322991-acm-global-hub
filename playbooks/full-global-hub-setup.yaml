@@ -276,13 +276,6 @@
         search_target_namespaces:
           - "local-cluster"
 
-#    - name: Wire Regional Data Sources into Global Grafana
-#      block:
-#        - ansible.builtin.include_role:
-#            name: acm/global_hub_grafana_datasources
-#          vars:
-#            target_kubeconfig: "{{ global_hub_kubeconfig }}"
-
 # ==============================================================================
 # TIER 3: Provision Managed Clusters (via ACM on assigned Regional Hub)
 # ==============================================================================
