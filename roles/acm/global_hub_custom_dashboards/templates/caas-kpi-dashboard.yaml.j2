@@ -70,7 +70,7 @@ data:
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "max by (cluster) (avg_over_time(up{job=\"apiserver\"}[$__range]))",
+              "expr": "avg_over_time(max by (cluster) (up{job=\"apiserver\"})[$__range:1m])",
               "legendFormat": "{{cluster}}",
               "range": true,
               "refId": "A"
