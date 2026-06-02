@@ -70,7 +70,7 @@ data:
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "avg_over_time(max by (cluster) (up{job=\"apiserver\"})[$__range:1m])",
+              "expr": "max by (cluster) (avg_over_time(up{job=\"apiserver\"}[$__range])) * 100",
               "legendFormat": "{{cluster}}",
               "range": true,
               "refId": "A"
@@ -313,8 +313,8 @@ data:
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "100 - ((sum by (instance) (node_filesystem_avail_bytes{fstype=~\"ext4|xfs\"}) * 100) / sum by (instance) (node_filesystem_size_bytes{fstype=~\"ext4|xfs\"}))",
-              "legendFormat": "Node: {{instance}}",
+              "expr": "100 - (sum by (cluster, instance) (node_filesystem_avail_bytes{fstype=~\"ext4|xfs\"}) / sum by (cluster, instance) (node_filesystem_size_bytes{fstype=~\"ext4|xfs\"}) * 100)",
+              "legendFormat": "{{cluster}} - {{instance}}",
               "range": true,
               "refId": "A"
             }
