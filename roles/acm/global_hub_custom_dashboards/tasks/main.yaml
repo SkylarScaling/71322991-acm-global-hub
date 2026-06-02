@@ -6,7 +6,7 @@
     template: "{{ item }}"
   loop:
     - kpi-dashboard.yaml.j2
+    - caas-kpi-dashboard.yaml.j2
+    - cluster-uptime-dashboard.yaml.j2
     - argocd-dashboard.yaml.j2
     - k8s-dashboard.yaml.j2
-    - cluster-uptime-dashboard.yaml.j2
-    - caas-kpi-dashboard.yaml.j2
