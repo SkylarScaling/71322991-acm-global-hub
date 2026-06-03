@@ -20,12 +20,11 @@ spec:
     - "{{ target_cluster_set }}"
 
 ---
-# Policy: Enable User Workload Monitoring (Enforce)
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
   name: enforce-uwm-enablement
-  namespace: default
+  namespace: "{{ target_clusterset_namespace }}"
   annotations:
     policy.open-cluster-management.io/standards: Configuration Baseline
     policy.open-cluster-management.io/categories: CM Configuration Management
@@ -49,10 +48,18 @@ spec:
                 metadata:
                   name: cluster-monitoring-config
                   namespace: openshift-monitoring
+                  annotations:
+                    # Required to tell the policy engine to evaluate the Jinja template on the Spoke
+                    policy.open-cluster-management.io/disable-templates: "false"
                 data:
                   config.yaml: |
-                    enableUserWorkload: true
-
+                    {% raw %}{{- $cm := lookup "v1" "ConfigMap" "openshift-monitoring" "cluster-monitoring-config" -}}
+                    {{- $config_dict := dict -}}
+                    {{- if and $cm $cm.data (hasKey $cm.data "config.yaml") -}}
+                      {{- $config_dict = (index $cm.data "config.yaml" | fromYAML) -}}
+                    {{- end -}}
+                    {{- $_ := set $config_dict "enableUserWorkload" true -}}
+                    {{- toYAML $config_dict | nindent 20 }}{% endraw %}
 ---
 # PolicySet
 apiVersion: policy.open-cluster-management.io/v1beta1
