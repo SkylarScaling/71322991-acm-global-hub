@@ -129,38 +129,38 @@
   ansible.builtin.debug:
     msg: "✅ Cluster {{ ocp_cluster.name }} has been successfully provisioned by ACM!"
 
-# ==============================================================================
-# HOSTED MODE CONFIGURATION (Only runs for Tier 2 Regional Hubs)
-# ==============================================================================
-- name: Extract Hive Admin Kubeconfig for Hosted Import
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ target_kubeconfig }}"
-    api_version: v1
-    kind: Secret
-    namespace: "{{ ocp_cluster.name }}"
-    label_selectors:
-      - "hive.openshift.io/cluster-deployment-name={{ ocp_cluster.name }}"
-      - "hive.openshift.io/secret-type=kubeconfig"
-  register: hive_kubeconfig_secret
-  when: is_regional_hub | default(false) | bool
-  until:
-    - hive_kubeconfig_secret.resources is defined
-    - hive_kubeconfig_secret.resources | length > 0
-  retries: 30
-  delay: 10
-
-- name: Create auto-import-secret for Hosted Mode
-  kubernetes.core.k8s:
-    kubeconfig: "{{ target_kubeconfig }}"
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: auto-import-secret
-        namespace: "{{ ocp_cluster.name }}"
-      type: Opaque
-      data:
-        # We pass the raw base64 data directly from the Hive secret
-        kubeconfig: "{{ hive_kubeconfig_secret.resources[0].data.kubeconfig }}"
-  when: is_regional_hub | default(false) | bool
+## ==============================================================================
+## IMPORT CONFIGURATION: Trigger ACM Default Mode Import
+## ==============================================================================
+#- name: Extract Hive Admin Kubeconfig for Import
+#  kubernetes.core.k8s_info:
+#    kubeconfig: "{{ target_kubeconfig }}"
+#    api_version: v1
+#    kind: Secret
+#    namespace: "{{ ocp_cluster.name }}"
+#    label_selectors:
+#      - "hive.openshift.io/cluster-deployment-name={{ ocp_cluster.name }}"
+#      - "hive.openshift.io/secret-type=kubeconfig"
+#  register: hive_kubeconfig_secret
+#  when: is_regional_hub | default(false) | bool
+#  until:
+#    - hive_kubeconfig_secret.resources is defined
+#    - hive_kubeconfig_secret.resources | length > 0
+#  retries: 30
+#  delay: 10
+#
+#- name: Create auto-import-secret to bootstrap the Klusterlet
+#  kubernetes.core.k8s:
+#    kubeconfig: "{{ target_kubeconfig }}"
+#    state: present
+#    definition:
+#      apiVersion: v1
+#      kind: Secret
+#      metadata:
+#        name: auto-import-secret
+#        namespace: "{{ ocp_cluster.name }}"
+#      type: Opaque
+#      data:
+#        # Pass the raw base64 data directly from the Hive secret
+#        kubeconfig: "{{ hive_kubeconfig_secret.resources[0].data.kubeconfig }}"
+#  when: is_regional_hub | default(false) | bool

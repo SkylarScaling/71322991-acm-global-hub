@@ -12,7 +12,7 @@ metadata:
 {% if is_regional_hub | default(false) | bool %}
     # Identifies this cluster as a Regional Hub to the Global Hub
     global-hub.open-cluster-management.io/managed-hub: "true"
-    global-hub.open-cluster-management.io/deploy-mode: "hosted"
+    global-hub.open-cluster-management.io/deploy-mode: "default"
 {% endif %}
 spec:
   hubAcceptsClient: true

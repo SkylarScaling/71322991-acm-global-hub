@@ -185,16 +185,6 @@
                 value: "true"
       when: install_config.storage is defined
 
-    - name: Import Regional Hub into the Global Hub
-      ansible.builtin.include_role:
-        name: acm/import_cluster
-      vars:
-        hub_kubeconfig: "{{ global_hub_kubeconfig }}"
-        spoke_kubeconfig: "{{ regional_hub_kubeconfig }}"
-        cluster_name: "{{ ocp_cluster.name }}"
-        target_cluster_set: "regional-hubs"
-        is_regional_hub: true
-
     - name: Configure Search Add-on for Regional Hub on Global Hub
       ansible.builtin.include_role:
         name: acm/configure_search_addon
@@ -202,44 +192,6 @@
         target_kubeconfig: "{{ global_hub_kubeconfig }}"
         search_target_namespaces:
           - "{{ ocp_cluster.name }}"
-
-    - name: Grant Hosted Governance Framework Agent permission to read its mailbox
-      kubernetes.core.k8s:
-        kubeconfig: "{{ global_hub_kubeconfig }}"
-        state: present
-        definition:
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: RoleBinding
-          metadata:
-            name: hosted-governance-framework-reader
-            namespace: "{{ ocp_cluster.name }}"
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: open-cluster-management:managedcluster:addon-governance-policy-framework
-          subjects:
-            - kind: User
-              name: "system:open-cluster-management:cluster:{{ ocp_cluster.name }}:addon:governance-policy-framework:agent:governance-policy-framework"
-              apiGroup: rbac.authorization.k8s.io
-
-    - name: Grant Hosted Search Collector Agent permission to read its mailbox
-      kubernetes.core.k8s:
-        kubeconfig: "{{ global_hub_kubeconfig }}"
-        state: present
-        definition:
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: RoleBinding
-          metadata:
-            name: hosted-search-collector-reader
-            namespace: "{{ ocp_cluster.name }}"
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: open-cluster-management:managedcluster:addon-search-collector
-          subjects:
-            - kind: User
-              name: "system:open-cluster-management:cluster:{{ ocp_cluster.name }}:addon:search-collector:agent:search-collector"
-              apiGroup: rbac.authorization.k8s.io
 
     - name: Install Regional Hub GitOps
       block:
@@ -291,6 +243,16 @@
         target_kubeconfig: "{{ regional_hub_kubeconfig }}"
         search_target_namespaces:
           - "local-cluster"
+
+    - name: Import Regional Hub into the Global Hub
+      ansible.builtin.include_role:
+        name: acm/import_cluster
+      vars:
+        hub_kubeconfig: "{{ global_hub_kubeconfig }}"
+        spoke_kubeconfig: "{{ regional_hub_kubeconfig }}"
+        cluster_name: "{{ ocp_cluster.name }}"
+        target_cluster_set: "regional-hubs"
+        is_regional_hub: true
 
 # ==============================================================================
 # TIER 3: Provision Managed Clusters (via IPI)

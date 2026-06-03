@@ -1,0 +1,138 @@
+---
+- name: Define Regional Hub List
+  ansible.builtin.set_fact:
+    regional_hub_names: "{{ groups['regional_hubs'] | map('extract', hostvars, ['ocp_cluster', 'name']) | list }}"
+
+# ==============================================================================
+# PHASE 1: Generate Permanent Credentials on the Regional Hubs
+# ==============================================================================
+- name: Create Thanos Querier ServiceAccount on Regional Hubs
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tmp_dir }}/install/{{ item }}/auth/kubeconfig"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: global-hub-querier
+        namespace: open-cluster-management-observability
+  loop: "{{ regional_hub_names }}"
+
+- name: Grant cluster-monitoring-view to the Querier SA
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tmp_dir }}/install/{{ item }}/auth/kubeconfig"
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: global-hub-querier-binding
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: cluster-monitoring-view
+      subjects:
+        - kind: ServiceAccount
+          name: global-hub-querier
+          namespace: open-cluster-management-observability
+  loop: "{{ regional_hub_names }}"
+
+- name: Create long-lived token secret for the Querier SA
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tmp_dir }}/install/{{ item }}/auth/kubeconfig"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: global-hub-querier-token
+        namespace: open-cluster-management-observability
+        annotations:
+          kubernetes.io/service-account.name: global-hub-querier
+      type: kubernetes.io/service-account-token
+  loop: "{{ regional_hub_names }}"
+
+- name: Extract Querier SA token from Regional Hubs
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ tmp_dir }}/install/{{ item }}/auth/kubeconfig"
+    api_version: v1
+    kind: Secret
+    name: global-hub-querier-token
+    namespace: open-cluster-management-observability
+  register: regional_tokens_raw
+  until:
+    - regional_tokens_raw.resources | length > 0
+    - regional_tokens_raw.resources[0].data.token is defined
+  retries: 10
+  delay: 5
+  loop: "{{ regional_hub_names }}"
+
+- name: Create secure Route for Thanos Query on Regional Hubs
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tmp_dir }}/install/{{ item }}/auth/kubeconfig"
+    state: present
+    definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: regional-thanos-query
+        namespace: open-cluster-management-observability
+      spec:
+        port:
+          targetPort: https
+        tls:
+          termination: passthrough
+        to:
+          kind: Service
+          name: rbac-query-proxy
+          weight: 100
+  loop: "{{ regional_hub_names }}"
+
+- name: Fetch Thanos Query Route URLs from Regional Hubs
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ tmp_dir }}/install/{{ item }}/auth/kubeconfig"
+    api_version: route.openshift.io/v1
+    kind: Route
+    # We are now fetching the route we JUST created
+    name: regional-thanos-query
+    namespace: open-cluster-management-observability
+  register: regional_routes_raw
+  # Wait for the OpenShift Router to actually assign the FQDN
+  until:
+    - regional_routes_raw.resources | length > 0
+    - regional_routes_raw.resources[0].spec.host is defined
+  retries: 10
+  delay: 5
+  loop: "{{ regional_hub_names }}"
+
+# ==============================================================================
+# PHASE 2: Inject Data Sources via Native ACM Secret
+# ==============================================================================
+- name: Inject Regional Data Sources via ACM Secret
+  kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: custom-grafana-datasources
+        namespace: open-cluster-management-observability
+      type: Opaque
+      stringData:
+        # The operator explicitly looks for this filename key
+        custom-datasources.yaml: |
+          apiVersion: 1
+          datasources:
+          {% for hub in regional_routes_raw.results %}
+            - name: "{{ hub.item }}"
+              type: prometheus
+              access: proxy
+              url: "https://{{ hub.resources[0].spec.host }}"
+              jsonData:
+                tlsSkipVerify: true
+                httpHeaderName1: Authorization
+              secureJsonData:
+                # Dynamically maps the token we generated in Phase 1 to this specific hub
+                httpHeaderValue1: "Bearer {{ (regional_tokens_raw.results | selectattr('item', 'equalto', hub.item) | first).resources[0].data.token | b64decode }}"
+          {% endfor %}
