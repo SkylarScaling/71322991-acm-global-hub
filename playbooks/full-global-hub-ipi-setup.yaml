@@ -23,7 +23,7 @@
     # Since IPI provisions the cluster directly, its kubeconfig is generated locally.
     - name: Set Global Hub Kubeconfig Path
       ansible.builtin.set_fact:
-        global_hub_kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
+        global_hub_kubeconfig: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
 
     - name: Create Infrastructure Node Pool
       block:
@@ -110,7 +110,7 @@
 
     - name: Fetch Global Hub kubeadmin password
       ansible.builtin.slurp:
-        src: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeadmin-password"
+        src: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeadmin-password"
       register: global_hub_password_raw
 
     - name: Print Final Environment Details
@@ -134,7 +134,7 @@
   tasks:
     - name: Set Global Hub Kubeconfig
       ansible.builtin.set_fact:
-        global_hub_kubeconfig: "{{ tmp_dir }}/install/{{ hostvars[groups['hub_cluster'][0]]['ocp_cluster']['name'] }}/auth/kubeconfig"
+        global_hub_kubeconfig: "{{ install_dir }}/{{ hostvars[groups['hub_cluster'][0]]['ocp_cluster']['name'] }}/auth/kubeconfig"
 
     - name: Request Elastic IP Quota Increase
       ansible.builtin.include_role:
@@ -148,7 +148,7 @@
     # Since we used IPI, the Kubeconfig is already local. No need to extract it from Hive via ACM.
     - name: Set Regional Hub Kubeconfig Fact
       ansible.builtin.set_fact:
-        regional_hub_kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
+        regional_hub_kubeconfig: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
 
     - name: Create Infrastructure Node Pool
       block:
@@ -311,7 +311,7 @@
   tasks:
     - name: Set Parent Hub Kubeconfig
       ansible.builtin.set_fact:
-        parent_hub_kubeconfig: "{{ tmp_dir }}/install/{{ regional_hub }}/auth/kubeconfig"
+        parent_hub_kubeconfig: "{{ install_dir }}/{{ regional_hub }}/auth/kubeconfig"
 
     - name: Request Elastic IP Quota Increase
       ansible.builtin.include_role:
@@ -325,7 +325,7 @@
     # Since we used IPI, the Kubeconfig is already local. No need to extract it from Hive via ACM.
     - name: Set Managed Cluster Kubeconfig Fact
       ansible.builtin.set_fact:
-        managed_cluster_kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
+        managed_cluster_kubeconfig: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
 
     - name: Import Managed Cluster into the Regional Hub
       ansible.builtin.include_role:
@@ -365,7 +365,7 @@
   tasks:
     - name: Fetch Global Hub kubeadmin password
       ansible.builtin.slurp:
-        src: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeadmin-password"
+        src: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeadmin-password"
       register: global_hub_password_raw
 
     - name: Print Final Environment Details

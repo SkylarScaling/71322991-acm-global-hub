@@ -1,3 +1,4 @@
 ---
 # Target Cluster Set for Policies
 target_cluster_set: default
+target_clusterset_namespace: "{{ ocp_cluster.managed_clusterset_namespace }}"

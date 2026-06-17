@@ -24,7 +24,7 @@
     # We set this as a fact so Tier 2 knows where to connect to apply ACM policies.
     - name: Set Global Hub Kubeconfig Path
       ansible.builtin.set_fact:
-        global_hub_kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
+        global_hub_kubeconfig: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
 
     - name: Create Infrastructure Node Pool
       block:
@@ -129,7 +129,7 @@
 
     - name: Fetch Global Hub kubeadmin password
       ansible.builtin.slurp:
-        src: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeadmin-password"
+        src: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeadmin-password"
       register: global_hub_password_raw
 
     - name: Print Final Environment Details
@@ -153,7 +153,7 @@
   tasks:
     - name: Set Global Hub Kubeconfig
       ansible.builtin.set_fact:
-        global_hub_kubeconfig: "{{ tmp_dir }}/install/{{ hostvars[groups['hub_cluster'][0]]['ocp_cluster']['name'] }}/auth/kubeconfig"
+        global_hub_kubeconfig: "{{ install_dir }}/{{ hostvars[groups['hub_cluster'][0]]['ocp_cluster']['name'] }}/auth/kubeconfig"
 
     - name: Apply Hive Provisioning Manifests to Global Hub
       block:
@@ -221,7 +221,7 @@
     # Now that we have the Regional Hub's kubeconfig locally, we can set up Day 2
     - name: Set Regional Hub Kubeconfig Fact
       ansible.builtin.set_fact:
-        regional_hub_kubeconfig: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeconfig"
+        regional_hub_kubeconfig: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
 
     - name: Install Regional Hub GitOps
       block:
@@ -287,7 +287,7 @@
   tasks:
     - name: Set Parent Hub Kubeconfig
       ansible.builtin.set_fact:
-        parent_hub_kubeconfig: "{{ tmp_dir }}/install/{{ regional_hub }}/auth/kubeconfig"
+        parent_hub_kubeconfig: "{{ install_dir }}/{{ regional_hub }}/auth/kubeconfig"
 
     - name: Apply Hive Provisioning Manifests to assigned Regional Hub
       block:
@@ -322,7 +322,7 @@
   tasks:
     - name: Fetch Global Hub kubeadmin password
       ansible.builtin.slurp:
-        src: "{{ tmp_dir }}/install/{{ ocp_cluster.name }}/auth/kubeadmin-password"
+        src: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeadmin-password"
       register: global_hub_password_raw
 
     - name: Print Final Environment Details
