@@ -3,8 +3,7 @@ groups:
     rules:
       # --- Original Baseline Alerts ---
       - alert: ManagedClusterOffline
-        # This is an Ansible variable, let it render
-        expr: apiserver_request_total{job="apiserver"} == 0
+        expr: absent(apiserver_request_total{job="apiserver"})
         for: {{ spoke_offline_threshold_minutes }}
         labels:
           severity: critical
@@ -13,7 +12,7 @@ groups:
           description: "The Regional Hub has lost contact with the Spoke."
 
       - alert: ESPJobFailed
-        expr: kube_job_failed{namespace="esp-job-test-application"} > 0
+        expr: kube_job_status_failed{namespace="esp-job-test-application"} > 0
         for: 1m
         labels:
           severity: warning
@@ -44,8 +43,8 @@ groups:
 
       # --- KPI: Pod Success Rate ---
       - alert: PodCrashLooping
-        expr: increase(kube_pod_container_status_restarts_total[10m]) > 2
-        for: 10m
+        expr: increase(kube_pod_container_status_restarts_total[15m]) > 2
+        for: 1m
         labels:
           severity: warning
           team: app-delivery
