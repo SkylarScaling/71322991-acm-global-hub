@@ -58,6 +58,12 @@ spec:
                   # Infrastructure Metrics (K8s/Platform)
                   metrics_list.yaml: |
                     names:
+                      - apiserver_request_total
+                      - kube_node_status_condition
+                      - node_memory_MemTotal_bytes
+                      - node_memory_MemFree_bytes
+                      - node_memory_Cached_bytes
+                      - node_memory_Buffers_bytes
                       - kube_job_status_failed
                       - kube_pod_container_status_restarts_total
                       - velero_backup_failure_total

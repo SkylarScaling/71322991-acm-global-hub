@@ -1,38 +1,26 @@
 ---
-- name: Check if cluster directory already exists
+- name: Check install state
   ansible.builtin.stat:
-    path: "{{ install_dir }}/{{ ocp_cluster.name }}"
-  register: cluster_dir_stat
+    path: "{{ install_dir }}/{{ ocp_cluster.name }}/{{ item }}"
+  loop:
+    - auth/kubeadmin-password
+    - auth/kubeconfig
+    - metadata.json
+  register: install_state
 
-- name: Check if auth directory exists
-  ansible.builtin.stat:
-    path: "{{ install_dir }}/{{ ocp_cluster.name }}/auth"
-  register: auth_dir_stat
+- name: Set install state facts
+  ansible.builtin.set_fact:
+    cluster_installed: "{{ install_state.results[0].stat.exists }}"
+    kubeconfig_exists: "{{ install_state.results[1].stat.exists }}"
+    metadata_exists: "{{ install_state.results[2].stat.exists }}"
 
-- name: Check if kubeadmin password exists
-  ansible.builtin.stat:
-    path: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeadmin-password"
-  register: kubeadmin_pwd_stat
-
-- name: Skip provisioning if cluster exists
-  ansible.builtin.debug:
-    msg: "Cluster directory already exists, skipping provisioning..."
-  when: >
-    cluster_dir_stat.stat.exists and
-    auth_dir_stat.stat.exists and
-    kubeadmin_pwd_stat.stat.exists
-
-- name: Provision Cluster on AWS
+# State 1: fresh install — no installer state on disk at all
+- name: Fresh install - Provision Cluster on AWS
   block:
     - name: create install_dir to work in
       ansible.builtin.file:
         state: directory
         path: "{{ install_dir }}/{{ ocp_cluster.name }}"
-      register: install_path
-
-    - name: print install_dir location for admin
-      ansible.builtin.debug:
-        msg: "The working directory location is {{ install_path.path }}"
 
     - name: Create .aws directory
       ansible.builtin.file:
@@ -46,7 +34,7 @@
         section: "default"
         option: "{{ item.option }}"
         value: "{{ item.value }}"
-        mode: '0600' # Set secure file permissions
+        mode: '0600'
       loop:
         - { option: 'aws_access_key_id', value: '{{ aws.aws_access_key_id }}' }
         - { option: 'aws_secret_access_key', value: '{{ aws.aws_secret_access_key }}' }
@@ -55,10 +43,10 @@
     - name: Populate install-config template
       ansible.builtin.template:
         src: "{{ role_path }}/templates/install-config.yaml.j2"
-        dest: "{{ install_path.path }}/install-config.yaml"
+        dest: "{{ install_dir }}/{{ ocp_cluster.name }}/install-config.yaml"
 
     - name: run IPI installer
-      command: "{{ bin_dir }}/openshift-install create cluster --dir={{ install_path.path }} --log-level=debug"
+      ansible.builtin.command: "{{ bin_dir }}/openshift-install create cluster --dir={{ install_dir }}/{{ ocp_cluster.name }} --log-level=debug"
       async: 3600
       poll: 0
       register: cluster_deploy
@@ -70,15 +58,92 @@
       until: job_status.finished
       retries: 120
       delay: 30
-  when: >
-    not cluster_dir_stat.stat.exists or
-    not auth_dir_stat.stat.exists or
-    not kubeadmin_pwd_stat.stat.exists
+  when: not cluster_installed and not metadata_exists
+
+# State 2: installer ran and created AWS infra but was killed before bootstrap completed
+# (metadata.json exists, auth/kubeconfig does not)
+# The bootstrap node is still running — wait for bootstrap, then wait for install.
+- name: Resume install - bootstrap not yet complete
+  block:
+    - name: print resume message
+      ansible.builtin.debug:
+        msg: "Install started but bootstrap not complete — running wait-for bootstrap-complete then wait-for install-complete"
+
+    - name: wait-for bootstrap-complete
+      ansible.builtin.command: "{{ bin_dir }}/openshift-install wait-for bootstrap-complete --dir={{ install_dir }}/{{ ocp_cluster.name }} --log-level=debug"
+      async: 3600
+      poll: 0
+      register: bootstrap_wait
+
+    - name: Check the status of bootstrap-complete
+      ansible.builtin.async_status:
+        jid: "{{ bootstrap_wait.ansible_job_id }}"
+      register: bootstrap_status
+      until: bootstrap_status.finished
+      retries: 120
+      delay: 30
+
+    - name: wait-for install-complete
+      ansible.builtin.command: "{{ bin_dir }}/openshift-install wait-for install-complete --dir={{ install_dir }}/{{ ocp_cluster.name }} --log-level=debug"
+      async: 3600
+      poll: 0
+      register: cluster_wait
+
+    - name: Check the status of install-complete
+      ansible.builtin.async_status:
+        jid: "{{ cluster_wait.ansible_job_id }}"
+      register: job_status
+      until: job_status.finished
+      retries: 120
+      delay: 30
+
+  rescue:
+    - name: Unrecoverable install state
+      ansible.builtin.fail:
+        msg: >
+          The install cannot be resumed. The cluster was interrupted before bootstrap
+          completed and the installer can no longer reconnect to it. To recover, destroy
+          the partial infrastructure and re-run the playbook:
+
+            {{ bin_dir }}/openshift-install destroy cluster \
+              --dir={{ install_dir }}/{{ ocp_cluster.name }} \
+              --log-level=info
+
+  when: not cluster_installed and metadata_exists and not kubeconfig_exists
+
+# State 3: bootstrap complete, control plane up, cluster operators still installing
+# (metadata.json exists, auth/kubeconfig exists, auth/kubeadmin-password does not)
+- name: Resume install - bootstrap complete, waiting for cluster operators
+  block:
+    - name: print resume message
+      ansible.builtin.debug:
+        msg: "Bootstrap complete and kubeconfig present — resuming with wait-for install-complete"
+
+    - name: wait-for install-complete
+      ansible.builtin.command: "{{ bin_dir }}/openshift-install wait-for install-complete --dir={{ install_dir }}/{{ ocp_cluster.name }} --log-level=debug"
+      async: 3600
+      poll: 0
+      register: cluster_wait
+
+    - name: Check the status of install-complete
+      ansible.builtin.async_status:
+        jid: "{{ cluster_wait.ansible_job_id }}"
+      register: job_status
+      until: job_status.finished
+      retries: 120
+      delay: 30
+  when: not cluster_installed and metadata_exists and kubeconfig_exists
+
+# State 4: fully installed
+- name: Skip provisioning - cluster already installed
+  ansible.builtin.debug:
+    msg: "Cluster already fully installed at {{ install_dir }}/{{ ocp_cluster.name }}, skipping provisioning."
+  when: cluster_installed
 
 - debug:
     msg: "Cluster console available at: https://console-openshift-console.apps.{{ ocp_cluster.name }}.{{ base_domain }}/"
 
-- name: Get kubeconfig auth
+- name: Set kubeconfig path
   set_fact:
     kubefile: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeadmin-password"
 

@@ -1,30 +1,29 @@
 ---
-# Namespace Permission: Allows this Hub namespace to see the Spoke clusters
+# Allows the policy namespace to see clusters in the target set
 apiVersion: cluster.open-cluster-management.io/v1beta2
 kind: ManagedClusterSetBinding
 metadata:
-  name: "{{ target_cluster_set }}"
-  namespace: default
+  name: "{{ spokes_clusterset }}"
+  namespace: {{ uwm_policy_namespace }}
 spec:
-  clusterSet: "{{ target_cluster_set }}"
+  clusterSet: "{{ spokes_clusterset }}"
 
 ---
-# Placement
 apiVersion: cluster.open-cluster-management.io/v1beta1
 kind: Placement
 metadata:
   name: uwm-placement
-  namespace: default
+  namespace: {{ uwm_policy_namespace }}
 spec:
   clusterSets:
-    - "{{ target_cluster_set }}"
+    - "{{ spokes_clusterset }}"
 
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
   name: enforce-uwm-enablement
-  namespace: "{{ target_clusterset_namespace }}"
+  namespace: {{ uwm_policy_namespace }}
   annotations:
     policy.open-cluster-management.io/standards: Configuration Baseline
     policy.open-cluster-management.io/categories: CM Configuration Management
@@ -49,7 +48,6 @@ spec:
                   name: cluster-monitoring-config
                   namespace: openshift-monitoring
                   annotations:
-                    # Required to tell the policy engine to evaluate the Jinja template on the Spoke
                     policy.open-cluster-management.io/disable-templates: "false"
                 data:
                   config.yaml: |
@@ -60,25 +58,24 @@ spec:
                     {{- end -}}
                     {{- $_ := set $config_dict "enableUserWorkload" true -}}
                     {{- toYAML $config_dict | nindent 20 }}{% endraw %}
+
 ---
-# PolicySet
 apiVersion: policy.open-cluster-management.io/v1beta1
 kind: PolicySet
 metadata:
   name: observability-enhancements
-  namespace: default
+  namespace: {{ uwm_policy_namespace }}
 spec:
   description: "Deploys advanced observability configurations to managed clusters"
   policies:
     - enforce-uwm-enablement
 
 ---
-# PlacementBinding
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
   name: uwm-placement-binding
-  namespace: default
+  namespace: {{ uwm_policy_namespace }}
 placementRef:
   apiGroup: cluster.open-cluster-management.io
   kind: Placement
