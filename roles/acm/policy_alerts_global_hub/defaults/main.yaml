@@ -20,9 +20,3 @@ alerting_email_esp_to: "{{ smtp.esp_to }}"
 # ==============================================================================
 spoke_offline_threshold_minutes: "5m"
 storage_critical_threshold_percent: "90"
-
-# ==============================================================================
-# ROUTING: Target the Regional Hubs based on the label defined in 01-managed-cluster.yaml.j2
-# ==============================================================================
-regional_hub_cluster_label_key: "global-hub.open-cluster-management.io/managed-hub"
-regional_hub_cluster_label_value: "true"

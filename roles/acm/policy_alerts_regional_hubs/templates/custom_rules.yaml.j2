@@ -1,0 +1,287 @@
+groups:
+  - name: custom-kpi-alerts
+    rules:
+      # --- Original Baseline Alerts ---
+      - alert: ManagedClusterOffline
+        # Detects clusters that were reporting 15m ago but have gone silent.
+        # Uses up{job="apiserver"} which is federated by the default MCOA ScrapeConfig.
+        # group_by(cluster) preserves the cluster label that absent() would lose.
+        expr: |
+          (count by (cluster) (up{job="apiserver"} offset 15m) > 0)
+            unless (count by (cluster) (up{job="apiserver"}) > 0)
+        for: {{ spoke_offline_threshold_minutes }}
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cluster {% raw %}{{ $labels.cluster }}{% endraw %} is unreachable."
+          description: "The Regional Hub has lost contact with the Spoke."
+
+      - alert: ESPJobFailed
+        expr: kube_job_status_failed{namespace="esp-job-test-application"} > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: esp-batch
+        annotations:
+          summary: "ESP Job Failed on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Job {% raw %}{{ $labels.job_name }}{% endraw %} failed to complete."
+
+      # --- KPI: Node Health & Resource Utilization ---
+      - alert: NodeMemoryCritical
+        expr: (sum by (cluster, instance) (node_memory_MemTotal_bytes) - sum by (cluster, instance) (node_memory_MemFree_bytes + node_memory_Cached_bytes + node_memory_Buffers_bytes)) / sum by (cluster, instance) (node_memory_MemTotal_bytes) * 100 > 90
+        for: 10m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "High Memory on node {% raw %}{{ $labels.instance }}{% endraw %} in {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Node memory utilization has exceeded 90% for over 10 minutes."
+
+      - alert: NodeNotReady
+        expr: kube_node_status_condition{condition="Ready", status="unknown"} == 1 or kube_node_status_condition{condition="Ready", status="false"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "Node {% raw %}{{ $labels.node }}{% endraw %} is offline in {% raw %}{{ $labels.cluster }}{% endraw %}"
+
+      # --- KPI: Pod Success Rate ---
+      - alert: PodCrashLooping
+        expr: increase(kube_pod_container_status_restarts_total[15m]) > 2
+        for: 1m
+        labels:
+          severity: warning
+          team: app-delivery
+        annotations:
+          summary: "Pod {% raw %}{{ $labels.pod }}{% endraw %} is crash looping on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Container {% raw %}{{ $labels.container }}{% endraw %} in namespace {% raw %}{{ $labels.namespace }}{% endraw %} is repeatedly crashing."
+
+      # --- KPI: Backup & Restore Success Rate ---
+      - alert: ClusterBackupFailed
+        expr: increase(velero_backup_failure_total[24h]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "OADP Backup Failed on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "A scheduled Velero backup failed to complete successfully in the last 24 hours."
+
+      # --- KPI: Vulnerability Scan Results ---
+      - alert: CriticalVulnerabilityDeployed
+        expr: rox_vulnerability_count{severity="CRITICAL"} > 0
+        for: 15m
+        labels:
+          severity: critical
+          team: security-ops
+        annotations:
+          summary: "Critical CVE detected on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "A workload with a CRITICAL severity vulnerability has been detected in namespace {% raw %}{{ $labels.namespace }}{% endraw %}."
+
+      # --- Node & Resource Health ---
+      - alert: NodeCPUHighUtilization
+        expr: instance:node_cpu:ratio > 0.9
+        for: 15m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "High CPU on node {% raw %}{{ $labels.instance }}{% endraw %} in {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Node CPU utilization has exceeded 90% for over 15 minutes."
+
+      - alert: NodeFilesystemAlmostFull
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.10
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "Filesystem almost full on {% raw %}{{ $labels.instance }}{% endraw %} in {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Less than 10% disk space remaining on {% raw %}{{ $labels.mountpoint }}{% endraw %}."
+
+      - alert: NodeFilesystemFillingUp
+        expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/"}[6h], 4*3600) < 0
+        for: 10m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "Filesystem predicted to fill up on {% raw %}{{ $labels.instance }}{% endraw %} in {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Disk at {% raw %}{{ $labels.mountpoint }}{% endraw %} is predicted to fill within 4 hours."
+
+      - alert: NodeDiskPressure
+        expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "Node {% raw %}{{ $labels.node }}{% endraw %} has disk pressure in {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Kubelet is reporting DiskPressure on node {% raw %}{{ $labels.node }}{% endraw %}."
+
+      - alert: PodOOMKilled
+        expr: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+        for: 0m
+        labels:
+          severity: warning
+          team: app-delivery
+        annotations:
+          summary: "Pod OOMKilled in {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Container {% raw %}{{ $labels.container }}{% endraw %} in pod {% raw %}{{ $labels.pod }}{% endraw %} (namespace {% raw %}{{ $labels.namespace }}{% endraw %}) was killed due to OOM."
+
+      # --- etcd Health ---
+      - alert: EtcdHighCommitDurations
+        expr: histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket[5m])) > 0.25
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "etcd high commit durations on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "etcd backend commit p99 latency is {% raw %}{{ $value }}{% endraw %}s (threshold 0.25s)."
+
+      - alert: EtcdHighFsyncDurations
+        expr: histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "etcd high WAL fsync durations on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "etcd WAL fsync p99 latency is {% raw %}{{ $value }}{% endraw %}s (threshold 0.5s). Risk of leader election."
+
+      - alert: EtcdInsufficientMembers
+        expr: count(etcd_server_has_leader == 1) < ((count(etcd_server_has_leader) + 1) / 2)
+        for: 3m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "etcd insufficient members on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "etcd cluster has lost quorum — fewer than (n/2)+1 members are healthy."
+
+      - alert: EtcdHighNumberOfLeaderChanges
+        expr: increase(etcd_server_leader_changes_seen_total[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "etcd frequent leader changes on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "More than 3 etcd leader changes in 15 minutes — cluster may be unstable."
+
+      # --- API Server ---
+      - alert: APIServerErrorRateHigh
+        expr: sum(rate(apiserver_request_total{code=~"5.."}[5m])) / sum(rate(apiserver_request_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "API server high error rate on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "More than 1% of API server requests are returning 5xx errors."
+
+      - alert: APIServerLatencyHigh
+        expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{verb!~"WATCH|CONNECT"}[5m])) by (le, verb, resource)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "API server high latency on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "API server p99 latency for {% raw %}{{ $labels.verb }}{% endraw %} {% raw %}{{ $labels.resource }}{% endraw %} exceeds 1s."
+
+      - alert: KubeletClientCertificateExpiration
+        expr: kubelet_certificate_manager_client_ttl_seconds < 604800
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "Kubelet client certificate expiring soon on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Kubelet client certificate on {% raw %}{{ $labels.node }}{% endraw %} expires in less than 7 days."
+
+      # --- ACM Policy Compliance ---
+      - alert: PolicyNonCompliant
+        expr: policy_governance_info{compliance_state="NonCompliant"} > 0
+        for: 10m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "ACM policy non-compliant on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Policy {% raw %}{{ $labels.policy }}{% endraw %} is non-compliant on cluster {% raw %}{{ $labels.cluster }}{% endraw %}."
+
+      - alert: ManagedClusterUnavailable
+        expr: acm_managed_cluster_status{condition="ManagedClusterConditionAvailable",status="false"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "Managed cluster unavailable: {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "ACM reports cluster {% raw %}{{ $labels.cluster }}{% endraw %} as unavailable."
+
+      # --- ArgoCD ---
+      - alert: ArgoCDAppOutOfSync
+        expr: argocd_app_info{sync_status="OutOfSync"} == 1
+        for: 10m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "ArgoCD app out of sync on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Application {% raw %}{{ $labels.name }}{% endraw %} (project {% raw %}{{ $labels.project }}{% endraw %}) has been out of sync for more than 10 minutes."
+
+      - alert: ArgoCDAppDegraded
+        expr: argocd_app_info{health_status="Degraded"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "ArgoCD app degraded on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Application {% raw %}{{ $labels.name }}{% endraw %} (project {% raw %}{{ $labels.project }}{% endraw %}) is in a Degraded health state."
+
+      # --- MCO / Thanos ---
+      - alert: ThanosRuleRuleEvaluationSlow
+        expr: prometheus_rule_group_last_duration_seconds > prometheus_rule_group_interval_seconds
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "Thanos Ruler evaluation is slow on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "Rule group {% raw %}{{ $labels.rule_group }}{% endraw %} evaluation is taking longer than the configured interval — alerts may be delayed."
+
+      - alert: ThanosQueryHttpRequestQueryErrorRateHigh
+        expr: sum(rate(thanos_http_requests_total{code=~"5..", handler="query"}[5m])) / sum(rate(thanos_http_requests_total{handler="query"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "Thanos Query high error rate on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "More than 5% of Thanos Query HTTP requests are returning 5xx errors."
+
+      # --- Persistent Volume Storage ---
+      - alert: PersistentVolumeFillingUp
+        expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.15
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-ops
+        annotations:
+          summary: "PersistentVolume filling up on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "PVC {% raw %}{{ $labels.persistentvolumeclaim }}{% endraw %} in namespace {% raw %}{{ $labels.namespace }}{% endraw %} has less than 15% capacity remaining."
+
+      - alert: PersistentVolumeFillingUpCritical
+        expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-ops
+        annotations:
+          summary: "PersistentVolume critically full on {% raw %}{{ $labels.cluster }}{% endraw %}"
+          description: "PVC {% raw %}{{ $labels.persistentvolumeclaim }}{% endraw %} in namespace {% raw %}{{ $labels.namespace }}{% endraw %} has less than 5% capacity remaining."

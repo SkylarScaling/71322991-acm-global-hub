@@ -1,0 +1,36 @@
+---
+# The Permission: Grants the 'default' namespace access to the managed clusters set
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: "{{ target_cluster_set }}"
+  namespace: default
+spec:
+  clusterSet: "{{ target_cluster_set }}"
+
+---
+# The Router: Selects all clusters in the managed-clusters set
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: managed-clusters-alerts-placement
+  namespace: default
+spec:
+  clusterSets:
+    - "{{ target_cluster_set }}"
+
+---
+# The Glue: Bind the Policy to the Placement
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: managed-clusters-alerts-binding
+  namespace: default
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: managed-clusters-alerts-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: managed-clusters-alerts-policy

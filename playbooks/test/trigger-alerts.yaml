@@ -1,0 +1,210 @@
+---
+# Deploy or remove alert test workloads on a target cluster.
+#
+# Deploy:  ansible-playbook trigger-alerts.yaml
+# Cleanup: ansible-playbook trigger-alerts.yaml -e state=absent
+#
+# Override the target cluster:
+#   ansible-playbook trigger-alerts.yaml -e target_kubeconfig=/path/to/kubeconfig
+#
+# Run a single alert test by tag:
+#   ansible-playbook trigger-alerts.yaml --tags esp
+#   ansible-playbook trigger-alerts.yaml --tags oom
+#   ansible-playbook trigger-alerts.yaml --tags crash-loop
+#   ansible-playbook trigger-alerts.yaml --tags pv
+
+- name: Alert Test Workloads
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    target_kubeconfig: "{{ install_dir }}/managed-cluster-1/auth/kubeconfig"
+    state: present
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Namespaces
+    # -------------------------------------------------------------------------
+    - name: Ensure alert-test namespace exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ target_kubeconfig }}"
+        state: "{{ state }}"
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: alert-test
+      tags: [esp, oom, crash-loop, pv]
+
+    - name: Ensure esp-job-test-application namespace exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ target_kubeconfig }}"
+        state: "{{ state }}"
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: esp-job-test-application
+      tags: [esp]
+
+    # -------------------------------------------------------------------------
+    # ESPJobFailed
+    # Alert: kube_job_status_failed{namespace="esp-job-test-application"} > 0
+    # Fires: ~1m after job fails (for: 1m) + scrape lag
+    # -------------------------------------------------------------------------
+    - name: Deploy failing ESP job
+      kubernetes.core.k8s:
+        kubeconfig: "{{ target_kubeconfig }}"
+        state: "{{ state }}"
+        definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: esp-job-failure-test
+            namespace: esp-job-test-application
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: fail
+                    image: registry.access.redhat.com/ubi9/ubi-minimal
+                    command: ["sh", "-c", "echo 'Simulating ESP job failure'; exit 1"]
+                    resources:
+                      requests:
+                        cpu: "10m"
+                        memory: "16Mi"
+                      limits:
+                        memory: "32Mi"
+      tags: [esp]
+
+    # -------------------------------------------------------------------------
+    # PodOOMKilled
+    # Alert: kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+    # Fires: immediately on first scrape after OOM kill (for: 0m) + scrape lag
+    # -------------------------------------------------------------------------
+    - name: Deploy OOM test pod
+      kubernetes.core.k8s:
+        kubeconfig: "{{ target_kubeconfig }}"
+        state: "{{ state }}"
+        definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: oom-test
+            namespace: alert-test
+          spec:
+            restartPolicy: Always
+            containers:
+              - name: memory-hog
+                image: registry.access.redhat.com/ubi9/ubi
+                command: ["python3", "-c", "x = bytearray(50 * 1024 * 1024)"]
+                resources:
+                  requests:
+                    cpu: "10m"
+                    memory: "8Mi"
+                  limits:
+                    memory: "10Mi"
+      tags: [oom]
+
+    # -------------------------------------------------------------------------
+    # PodCrashLooping
+    # Alert: increase(kube_pod_container_status_restarts_total[15m]) > 2
+    # Fires: ~5-10m (needs 3+ restarts + 1m for: + scrape lag)
+    # -------------------------------------------------------------------------
+    - name: Deploy crash-loop test pod
+      kubernetes.core.k8s:
+        kubeconfig: "{{ target_kubeconfig }}"
+        state: "{{ state }}"
+        definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: crash-loop-test
+            namespace: alert-test
+          spec:
+            restartPolicy: Always
+            containers:
+              - name: crasher
+                image: registry.access.redhat.com/ubi9/ubi-minimal
+                command: ["sh", "-c", "sleep 5; exit 1"]
+                resources:
+                  requests:
+                    cpu: "10m"
+                    memory: "16Mi"
+                  limits:
+                    memory: "32Mi"
+      tags: [crash-loop]
+
+    # -------------------------------------------------------------------------
+    # PersistentVolumeFillingUp
+    # Alert: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.15
+    # Fires: ~7-10m (dd write time + 5m for: + scrape lag)
+    # 920Mi written to 1Gi PVC = ~90% full, above the 85% warning threshold
+    #
+    # CLEANUP ORDER: pod is deleted before PVC so the volume is released cleanly.
+    # -------------------------------------------------------------------------
+    - name: Remove PV filler pod before PVC on cleanup
+      kubernetes.core.k8s:
+        kubeconfig: "{{ target_kubeconfig }}"
+        state: absent
+        definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: pv-filler
+            namespace: alert-test
+      when: state == 'absent'
+      tags: [pv]
+
+    - name: Deploy PV fill test PVC
+      kubernetes.core.k8s:
+        kubeconfig: "{{ target_kubeconfig }}"
+        state: "{{ state }}"
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: pv-fill-test
+            namespace: alert-test
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+      tags: [pv]
+
+    - name: Deploy PV filler pod
+      kubernetes.core.k8s:
+        kubeconfig: "{{ target_kubeconfig }}"
+        state: "{{ state }}"
+        definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: pv-filler
+            namespace: alert-test
+          spec:
+            restartPolicy: Never
+            containers:
+              - name: filler
+                image: registry.access.redhat.com/ubi9/ubi-minimal
+                command: ["sh", "-c", "dd if=/dev/zero of=/data/fill bs=1M count=920 && echo 'PV filled to ~90%' && sleep 86400"]
+                resources:
+                  requests:
+                    cpu: "10m"
+                    memory: "16Mi"
+                  limits:
+                    memory: "32Mi"
+                volumeMounts:
+                  - name: data
+                    mountPath: /data
+            volumes:
+              - name: data
+                persistentVolumeClaim:
+                  claimName: pv-fill-test
+      when: state != 'absent'
+      tags: [pv]

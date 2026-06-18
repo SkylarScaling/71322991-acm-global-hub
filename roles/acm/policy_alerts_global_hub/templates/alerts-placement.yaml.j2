@@ -1,0 +1,35 @@
+---
+# The 'default' ManagedClusterSetBinding already exists on every hub — no binding needed.
+# The Router: Select only the hub itself via the 'local-cluster' label
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: global-hub-alerts-placement
+  namespace: default
+spec:
+  clusterSets:
+    - default
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchExpressions:
+            - key: local-cluster
+              operator: In
+              values:
+                - "true"
+
+---
+# The Glue: Bind the Policy to the Placement
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: global-hub-alerts-binding
+  namespace: default
+placementRef:
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+  name: global-hub-alerts-placement
+subjects:
+  - apiGroup: policy.open-cluster-management.io
+    kind: Policy
+    name: global-hub-alerts-policy

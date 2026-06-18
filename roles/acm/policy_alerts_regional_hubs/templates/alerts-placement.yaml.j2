@@ -3,11 +3,10 @@
 apiVersion: cluster.open-cluster-management.io/v1beta2
 kind: ManagedClusterSetBinding
 metadata:
-  # Using default filter to catch it if not defined globally
-  name: "{{ target_cluster_set | default('regional-hubs') }}"
+  name: regional-hubs
   namespace: default
 spec:
-  clusterSet: "{{ target_cluster_set | default('regional-hubs') }}"
+  clusterSet: regional-hubs
 
 ---
 # The Router: Find all Regional Hubs based on their managed-hub label
@@ -18,7 +17,7 @@ metadata:
   namespace: default
 spec:
   clusterSets:
-    - "{{ target_cluster_set | default('regional-hubs') }}"
+    - regional-hubs
   predicates:
     - requiredClusterSelector:
         labelSelector:
@@ -33,7 +32,7 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: regional-alerts-binding
+  name: regional-hubs-alerts-binding
   namespace: default
 placementRef:
   apiGroup: cluster.open-cluster-management.io
@@ -42,4 +41,4 @@ placementRef:
 subjects:
   - apiGroup: policy.open-cluster-management.io
     kind: Policy
-    name: global-to-regional-alerts-policy
+    name: regional-hubs-alerts-policy

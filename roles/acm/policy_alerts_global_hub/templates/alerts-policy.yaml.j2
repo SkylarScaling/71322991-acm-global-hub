@@ -2,7 +2,7 @@
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: global-to-regional-alerts-policy
+  name: global-hub-alerts-policy
   namespace: default
 spec:
   remediationAction: enforce
@@ -12,9 +12,8 @@ spec:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
         metadata:
-          name: regional-observability-config
+          name: global-hub-observability-config
           annotations:
-            # Tell ACM's policy engine to ignore template brackets in the payloads below
             policy.open-cluster-management.io/disable-templates: "true"
         spec:
           remediationAction: enforce
@@ -30,10 +29,9 @@ spec:
                   namespace: open-cluster-management-observability
                 type: Opaque
                 data:
-                  # Since the Secret naturally expects Base64, we can safely leave this as b64encode
                   alertmanager.yaml: {{ lookup('template', 'alertmanager.yaml.j2') | b64encode }}
 
-            # PAYLOAD 2: The Custom Rules
+            # PAYLOAD 2: The Custom Rules (full set — Global Hub runs ACM, MCO, ODF, ArgoCD)
             - complianceType: musthave
               objectDefinition:
                 apiVersion: v1
@@ -42,7 +40,6 @@ spec:
                   name: thanos-ruler-custom-rules
                   namespace: open-cluster-management-observability
                 data:
-                  # We use 'data' and 'indent' so the MCO operator correctly detects the plaintext file
                   custom_rules.yaml: |
 {{ lookup('template', 'custom_rules.yaml.j2') | indent(20, True) }}
 
@@ -55,7 +52,6 @@ spec:
                   name: observability-metrics-custom-allowlist
                   namespace: open-cluster-management-observability
                 data:
-                  # Infrastructure Metrics (K8s/Platform)
                   metrics_list.yaml: |
                     names:
                       - apiserver_request_total
@@ -97,8 +93,23 @@ spec:
                       - kube_pod_container_info
                       - container_fs_limit_bytes
                       - container_fs_usage_bytes
+                      - instance:node_cpu:ratio
+                      - node_filesystem_avail_bytes
+                      - node_filesystem_size_bytes
+                      - kube_pod_container_status_last_terminated_reason
+                      - etcd_disk_backend_commit_duration_seconds_bucket
+                      - etcd_disk_wal_fsync_duration_seconds_bucket
+                      - etcd_server_has_leader
+                      - etcd_server_leader_changes_seen_total
+                      - apiserver_request_duration_seconds_bucket
+                      - kubelet_certificate_manager_client_ttl_seconds
+                      - policy_governance_info
+                      - acm_managed_cluster_status
+                      - prometheus_rule_group_last_duration_seconds
+                      - prometheus_rule_group_interval_seconds
+                      - kubelet_volume_stats_capacity_bytes
+                      - thanos_http_requests_total
 
-                  # User Workload Metrics (ArgoCD)
                   uwl_metrics_list.yaml: |
                     names:
                       - process_start_time_seconds

@@ -1,0 +1,27 @@
+---
+# ==============================================================================
+# ROUTING INTEGRATIONS (Pulled from global inventory variables)
+# ==============================================================================
+
+# SMTP Mapping
+alerting_smtp_host: "{{ smtp.host }}"
+alerting_smtp_port: "{{ smtp.port }}"
+alerting_smtp_from: "{{ smtp.from_address }}"
+alerting_smtp_require_tls: "{{ smtp.require_tls }}"
+alerting_smtp_username: "{{ smtp.username }}"
+alerting_smtp_password: "{{ smtp.app_password }}"
+
+# Destination Mapping
+alerting_email_default_to: "{{ smtp.default_to }}"
+alerting_email_esp_to: "{{ smtp.esp_to }}"
+
+# ==============================================================================
+# CUSTOMER INPUT REQUIRED: Alert Thresholds
+# ==============================================================================
+spoke_offline_threshold_minutes: "5m"
+storage_critical_threshold_percent: "90"
+
+# ==============================================================================
+# ROUTING: Target managed clusters cluster set
+# ==============================================================================
+target_cluster_set: "managed-clusters"

@@ -1,0 +1,149 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: managed-clusters-alerts-policy
+  namespace: default
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: managed-cluster-observability-config
+          annotations:
+            policy.open-cluster-management.io/disable-templates: "true"
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            # PAYLOAD 1: The Alertmanager Config
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: alertmanager-config
+                  namespace: open-cluster-management-observability
+                type: Opaque
+                data:
+                  alertmanager.yaml: {{ lookup('template', 'alertmanager.yaml.j2') | b64encode }}
+
+            # PAYLOAD 2: The Custom Rules (workload + infra; no MCO/Thanos, ArgoCD, or ACM)
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: thanos-ruler-custom-rules
+                  namespace: open-cluster-management-observability
+                data:
+                  custom_rules.yaml: |
+{{ lookup('template', 'custom_rules.yaml.j2') | indent(20, True) }}
+
+            # PAYLOAD 3: Legacy metrics allowlist (kept for backward compat with older MCO versions)
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: observability-metrics-custom-allowlist
+                  namespace: open-cluster-management-observability
+                data:
+                  metrics_list.yaml: |
+                    names:
+                      - apiserver_request_total
+                      - kube_node_status_condition
+                      - node_memory_MemTotal_bytes
+                      - node_memory_MemFree_bytes
+                      - node_memory_Cached_bytes
+                      - node_memory_Buffers_bytes
+                      - kube_job_status_failed
+                      - kube_pod_container_status_restarts_total
+                      - velero_backup_failure_total
+                      - rox_vulnerability_count
+                      - kube_pod_container_resource_requests
+                      - node_memory_Active_bytes
+                      - cluster:cpu_usage_cores:sum
+                      - cluster:memory_usage_bytes:sum
+                      - cluster:capacity_memory_bytes:sum
+                      - container_memory_working_set_bytes
+                      - kube_node_status_allocatable
+                      - kube_pod_container_resource_limits
+                      - container_cpu_usage_seconds_total
+                      - kube_node_info
+                      - kube_service_info
+                      - kube_deployment_metadata_generation
+                      - kube_daemonset_metadata_generation
+                      - kube_statefulset_metadata_generation
+                      - kube_configmap_info
+                      - kube_secret_info
+                      - container_network_receive_bytes_total
+                      - container_network_transmit_bytes_total
+                      - kube_node_spec_taint
+                      - kubelet_volume_stats_used_bytes
+                      - kubelet_volume_stats_available_bytes
+                      - kube_pod_spec_volumes_persistentvolumeclaims_info
+                      - container_spec_cpu_quota
+                      - container_spec_memory_limit_bytes
+                      - container_memory_rss
+                      - kube_pod_created
+                      - kube_pod_container_info
+                      - container_fs_limit_bytes
+                      - container_fs_usage_bytes
+                      - instance:node_cpu:ratio
+                      - node_filesystem_avail_bytes
+                      - node_filesystem_size_bytes
+                      - kube_pod_container_status_last_terminated_reason
+                      - etcd_disk_backend_commit_duration_seconds_bucket
+                      - etcd_disk_wal_fsync_duration_seconds_bucket
+                      - etcd_server_has_leader
+                      - etcd_server_leader_changes_seen_total
+                      - apiserver_request_duration_seconds_bucket
+                      - kubelet_certificate_manager_client_ttl_seconds
+                      - kubelet_volume_stats_capacity_bytes
+
+            # PAYLOAD 4: Custom ScrapeConfig for MCOA (new MCO architecture)
+            # The observability-metrics-custom-allowlist is not used by MCOA; instead
+            # ScrapeConfig objects in open-cluster-management-agent-addon with the
+            # platform-metrics-collector label are picked up by the PrometheusAgent.
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: monitoring.rhobs/v1alpha1
+                kind: ScrapeConfig
+                metadata:
+                  name: custom-kpi-metrics
+                  namespace: open-cluster-management-agent-addon
+                  labels:
+                    app.kubernetes.io/component: platform-metrics-collector
+                    app.kubernetes.io/managed-by: acm-policy
+                    app.kubernetes.io/part-of: multicluster-observability-addon
+                spec:
+                  jobName: custom-kpi
+                  metricsPath: /federate
+                  scheme: HTTPS
+                  scrapeClass: ocp-monitoring
+                  params:
+                    "match[]":
+                      - '{__name__="kube_job_status_failed"}'
+                      - '{__name__="kube_pod_container_status_restarts_total"}'
+                      - '{__name__="kube_pod_container_status_last_terminated_reason"}'
+                      - '{__name__="kubelet_volume_stats_available_bytes"}'
+                      - '{__name__="kubelet_volume_stats_capacity_bytes"}'
+                      - '{__name__="kubelet_certificate_manager_client_ttl_seconds"}'
+                      - '{__name__="kube_node_status_condition"}'
+                      - '{__name__="node_memory_MemTotal_bytes"}'
+                      - '{__name__="node_memory_MemFree_bytes"}'
+                      - '{__name__="node_memory_Cached_bytes"}'
+                      - '{__name__="node_memory_Buffers_bytes"}'
+                      - '{__name__="apiserver_request_total",job="apiserver"}'
+                      - '{__name__="policy_governance_info"}'
+                      - '{__name__="acm_managed_cluster_status"}'
+                  staticConfigs:
+                    - targets:
+                        - prometheus-k8s.openshift-monitoring.svc:9091
+                  metricRelabelings:
+                    - action: labeldrop
+                      regex: managed_cluster|id

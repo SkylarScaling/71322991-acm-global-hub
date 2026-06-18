@@ -1,12 +1,12 @@
 ---
-- name: Deploy Global-to-Regional Alerting Policy
+- name: Deploy Regional Hub Observability Alerts Policy
   kubernetes.core.k8s:
     kubeconfig: "{{ target_kubeconfig }}"
     state: present
-    template: regional-alerts-policy.yaml.j2
+    template: alerts-policy.yaml.j2
 
 - name: Deploy Placement and Binding for Regional Hubs
   kubernetes.core.k8s:
     kubeconfig: "{{ target_kubeconfig }}"
     state: present
-    template: regional-alerts-placement.yaml.j2
+    template: alerts-placement.yaml.j2

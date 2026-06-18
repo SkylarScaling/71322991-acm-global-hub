@@ -96,10 +96,17 @@
           vars:
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
 
-    - name: Deploy Enterprise Observability Alerts Policy
+    - name: Deploy Global Hub Observability Alerts (self-targeting)
       block:
         - ansible.builtin.include_role:
-            name: acm/policy_install_observability_alerts
+            name: acm/policy_alerts_global_hub
+          vars:
+            target_kubeconfig: "{{ global_hub_kubeconfig }}"
+
+    - name: Deploy Regional Hub Observability Alerts Policy
+      block:
+        - ansible.builtin.include_role:
+            name: acm/policy_alerts_regional_hubs
           vars:
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
 
@@ -154,6 +161,7 @@
             name: acm/aws_provision_cluster_via_acm
           vars:
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
+            target_cluster_set: "regional-hubs"
             is_regional_hub: true
 
     - name: Configure Search Add-on for Regional Hub on Global Hub
@@ -254,6 +262,14 @@
             target_cluster_set: "managed-clusters"
             target_kubeconfig: "{{ regional_hub_kubeconfig }}"
 
+    - name: Deploy Managed Cluster Observability Alerts Policy
+      block:
+        - ansible.builtin.include_role:
+            name: acm/policy_alerts_managed_clusters
+          vars:
+            target_kubeconfig: "{{ regional_hub_kubeconfig }}"
+            target_cluster_set: "managed-clusters"
+
     - name: Configure Managed Cluster Addons
       block:
         - ansible.builtin.include_role:
@@ -295,6 +311,7 @@
             name: acm/aws_provision_cluster_via_acm
           vars:
             target_kubeconfig: "{{ parent_hub_kubeconfig }}"
+            target_cluster_set: "managed-clusters"
 
     - name: Extract Kubeconfig for Managed Cluster
       block:

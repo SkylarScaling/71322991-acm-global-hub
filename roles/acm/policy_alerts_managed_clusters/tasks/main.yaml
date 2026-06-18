@@ -1,0 +1,12 @@
+---
+- name: Deploy Managed Cluster Observability Alerts Policy
+  kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
+    state: present
+    template: alerts-policy.yaml.j2
+
+- name: Deploy Placement and Binding for Managed Clusters
+  kubernetes.core.k8s:
+    kubeconfig: "{{ target_kubeconfig }}"
+    state: present
+    template: alerts-placement.yaml.j2

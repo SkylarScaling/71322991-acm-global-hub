@@ -9,8 +9,18 @@
     KUBECONFIG: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
 
   tasks:
-    - name: Deploy Alerting Policies to the Global Hub
+    - name: Deploy Global Hub Observability Alerts (self-targeting)
       ansible.builtin.include_role:
-        name: acm/policy_install_observability_alerts
+        name: acm/policy_alerts_global_hub
       vars:
         target_kubeconfig: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
+
+    - name: Deploy Regional Hub Observability Alerts Policy
+      ansible.builtin.include_role:
+        name: acm/policy_alerts_regional_hubs
+      vars:
+        target_kubeconfig: "{{ install_dir }}/{{ ocp_cluster.name }}/auth/kubeconfig"
+
+    # NOTE: Tier 3 (managed cluster) alerts are deployed from each Regional Hub
+    # during full-global-hub-setup.yaml Tier 2 execution (using regional_hub_kubeconfig).
+    # To deploy Tier 3 alerts standalone, run full-global-hub-setup.yaml --tags tier2.

@@ -1,0 +1,92 @@
+# policy_alerts_regional_hubs
+
+Deploys observability alert rules and Alertmanager routing to all **Regional Hub** (Tier 2) clusters via ACM Policy. The policy is applied from the Global Hub and targets clusters in the `regional-hubs` ManagedClusterSet. Each Regional Hub's Thanos Ruler evaluates rules against metrics federated from its managed clusters.
+
+## Alert flow
+
+```
+Managed Cluster PrometheusAgent → Regional Hub Thanos Receive → Thanos Ruler evaluates rules → Alertmanager → Email
+```
+
+## Key files
+
+| File | Purpose |
+|------|---------|
+| `templates/custom_rules.yaml.j2` | All alert rule definitions (PromQL expressions, labels, annotations) |
+| `templates/alertmanager.yaml.j2` | Alertmanager config: SMTP settings and email routing rules |
+| `templates/alerts-policy.yaml.j2` | ACM Policy that enforces the above as ConfigMap/Secret on each Regional Hub |
+| `templates/alerts-placement.yaml.j2` | Placement targeting the `regional-hubs` ManagedClusterSet |
+| `defaults/main.yaml` | Threshold defaults, SMTP variable mapping, and cluster label selector |
+
+## How to add or modify an alert rule
+
+Edit `templates/custom_rules.yaml.j2`. Each rule follows standard Prometheus syntax:
+
+```yaml
+- alert: MyNewAlert
+  expr: some_metric{label="value"} > threshold
+  for: 5m
+  labels:
+    severity: warning
+    team: platform-ops
+  annotations:
+    summary: "Something happened on {% raw %}{{ $labels.cluster }}{% endraw %}"
+    description: "Detail: {% raw %}{{ $value }}{% endraw %}"
+```
+
+**Important:** Any `{{ }}` in annotations or expressions must be wrapped in `{% raw %}...{% endraw %}` to prevent Jinja2 from interpreting them before the template is rendered into the ConfigMap.
+
+After editing, redeploy from the Global Hub:
+
+```bash
+ansible-playbook playbooks/acm/acm-global-hub-alerts-install.yaml -i inventory.yaml
+```
+
+Or as part of a full Tier 1 run:
+
+```bash
+ansible-playbook playbooks/full-global-hub-setup.yaml -i inventory.yaml --tags tier1
+```
+
+## How to add an email route
+
+Edit `templates/alertmanager.yaml.j2`. Add a matcher under `route.routes` and a corresponding receiver:
+
+```yaml
+routes:
+  - matchers:
+      - team="my-team"
+    receiver: 'my-team-email'
+
+receivers:
+  - name: 'my-team-email'
+    email_configs:
+      - to: 'my-team@example.com'
+        send_resolved: true
+```
+
+SMTP credentials come from the inventory `smtp.*` variables and are never hardcoded in the template.
+
+## Thresholds
+
+Defaults are in `defaults/main.yaml` and can be overridden in the inventory:
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `spoke_offline_threshold_minutes` | `5m` | `for:` duration on `ManagedClusterOffline` |
+| `storage_critical_threshold_percent` | `90` | Storage fullness threshold |
+| `regional_hub_cluster_label_key` | `global-hub.open-cluster-management.io/managed-hub` | Label used by the Placement to select Regional Hubs |
+| `regional_hub_cluster_label_value` | `true` | Expected value for the label above |
+
+## Adding metrics that rules depend on
+
+The Regional Hub's Thanos gets its data from the managed cluster PrometheusAgents via remote_write. The metrics available are controlled by MCOA `ScrapeConfig` objects in the `open-cluster-management-agent-addon` namespace on each managed cluster.
+
+The `policy_alerts_managed_clusters` role deploys a `custom-kpi-metrics` ScrapeConfig to managed clusters that covers the metrics this role's rules depend on. If you add a rule here that uses a metric not currently federated, add it to the `match[]` list in `roles/acm/policy_alerts_managed_clusters/templates/alerts-policy.yaml.j2` under the `custom-kpi-metrics` ScrapeConfig payload, then redeploy that role as well.
+
+To check which metrics are currently available in Thanos on a Regional Hub:
+
+```bash
+oc --kubeconfig=<regional-hub-kubeconfig> get --raw \
+  '/api/v1/namespaces/open-cluster-management-observability/services/http:observability-thanos-query:9090/proxy/api/v1/query?query=<metric_name>'
+```
