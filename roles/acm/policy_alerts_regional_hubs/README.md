@@ -5,7 +5,7 @@ Deploys observability alert rules and Alertmanager routing to all **Regional Hub
 ## Alert flow
 
 ```
-Managed Cluster PrometheusAgent → Regional Hub Thanos Receive → Thanos Ruler evaluates rules → Alertmanager → Email
+Managed Cluster PrometheusAgent → Regional Hub Thanos Receive → Thanos Ruler evaluates rules → Alertmanager → Email / Webhook
 ```
 
 ## Key files
@@ -13,10 +13,10 @@ Managed Cluster PrometheusAgent → Regional Hub Thanos Receive → Thanos Ruler
 | File | Purpose |
 |------|---------|
 | `templates/custom_rules.yaml.j2` | All alert rule definitions (PromQL expressions, labels, annotations) |
-| `templates/alertmanager.yaml.j2` | Alertmanager config: SMTP settings and email routing rules |
+| `templates/alertmanager.yaml.j2` | Alertmanager config: notification channels (email, webhook) and routing rules |
 | `templates/alerts-policy.yaml.j2` | ACM Policy that enforces the above as ConfigMap/Secret on each Regional Hub |
 | `templates/alerts-placement.yaml.j2` | Placement targeting the `regional-hubs` ManagedClusterSet |
-| `defaults/main.yaml` | Threshold defaults, SMTP variable mapping, and cluster label selector |
+| `defaults/main.yaml` | Threshold defaults, SMTP variable mapping, webhook settings, and cluster label selector |
 
 ## How to add or modify an alert rule
 
@@ -48,24 +48,58 @@ Or as part of a full Tier 1 run:
 ansible-playbook playbooks/full-global-hub-setup.yaml -i inventory.yaml --tags tier1
 ```
 
-## How to add an email route
+## Notification channels
 
-Edit `templates/alertmanager.yaml.j2`. Add a matcher under `route.routes` and a corresponding receiver:
+Email and webhook notifications are independently toggled. Both can be active at the same time — Alertmanager will fire all configured notifiers in a receiver.
+
+### Email (default: enabled)
+
+Controlled by `alerting_email_enabled` (default `true`). SMTP credentials come from the inventory `smtp.*` variables.
+
+To disable email and use only webhook:
+
+```yaml
+# inventory.yaml
+all:
+  vars:
+    alerts:
+      email:
+        enabled: false
+```
+
+### Webhook / ServiceNow (default: disabled)
+
+Controlled by `alerts.webhook.enabled` (default `false`) and `alerts.webhook.url`. Set both in the inventory:
+
+```yaml
+# inventory.yaml
+all:
+  vars:
+    alerts:
+      webhook:
+        enabled: true
+        url: "https://your-instance.service-now.com/api/global/em/jsonv2"
+```
+
+### Adding a routing rule
+
+Edit `templates/alertmanager.yaml.j2`. Add a matcher under `route.routes` and a corresponding receiver. Include whichever notifier blocks apply:
 
 ```yaml
 routes:
   - matchers:
       - team="my-team"
-    receiver: 'my-team-email'
+    receiver: 'my-team'
 
 receivers:
-  - name: 'my-team-email'
+  - name: 'my-team'
     email_configs:
       - to: 'my-team@example.com'
         send_resolved: true
+    webhook_configs:
+      - url: 'https://hooks.example.com/my-team'
+        send_resolved: true
 ```
-
-SMTP credentials come from the inventory `smtp.*` variables and are never hardcoded in the template.
 
 ## Thresholds
 
@@ -75,6 +109,9 @@ Defaults are in `defaults/main.yaml` and can be overridden in the inventory:
 |----------|---------|--------|
 | `spoke_offline_threshold_minutes` | `5m` | `for:` duration on `ManagedClusterOffline` |
 | `storage_critical_threshold_percent` | `90` | Storage fullness threshold |
+| `alerting_email_enabled` | `true` | Send alerts via email |
+| `alerting_webhook_enabled` | `false` | Send alerts via webhook |
+| `alerting_webhook_url` | `webhook.url` from inventory | Webhook endpoint URL |
 | `regional_hub_cluster_label_key` | `global-hub.open-cluster-management.io/managed-hub` | Label used by the Placement to select Regional Hubs |
 | `regional_hub_cluster_label_value` | `true` | Expected value for the label above |
 

@@ -1,23 +1,39 @@
 global:
   resolve_timeout: 5m
+{% if alerting_email_enabled | bool %}
   smtp_smarthost: '{{ alerting_smtp_host }}:{{ alerting_smtp_port }}'
   smtp_from: '{{ alerting_smtp_from }}'
-  smtp_require_tls: {{ smtp.require_tls | lower }}
-  smtp_auth_username: '{{ smtp.username }}'
-  smtp_auth_password: '{{ smtp.app_password }}'
+  smtp_require_tls: {{ alerting_smtp_require_tls | lower }}
+  smtp_auth_username: '{{ alerting_smtp_username }}'
+  smtp_auth_password: '{{ alerting_smtp_password }}'
+{% endif %}
 route:
-  receiver: 'default-email'
+  receiver: 'default'
   group_by: ['cluster', 'alertname']
   routes:
     - matchers:
         - namespace="esp-job-test-application"
-      receiver: 'esp-team-email'
+      receiver: 'esp-team'
 receivers:
-  - name: 'default-email'
+  - name: 'default'
+{% if alerting_email_enabled | bool %}
     email_configs:
-      - to: '{{ smtp.default_to }}'
+      - to: '{{ alerting_email_default_to }}'
         send_resolved: true
-  - name: 'esp-team-email'
+{% endif %}
+{% if alerting_webhook_enabled | bool %}
+    webhook_configs:
+      - url: '{{ alerting_webhook_url }}'
+        send_resolved: true
+{% endif %}
+  - name: 'esp-team'
+{% if alerting_email_enabled | bool %}
     email_configs:
-      - to: '{{ smtp.esp_to }}'
+      - to: '{{ alerting_email_esp_to }}'
         send_resolved: true
+{% endif %}
+{% if alerting_webhook_enabled | bool %}
+    webhook_configs:
+      - url: '{{ alerting_webhook_url }}'
+        send_resolved: true
+{% endif %}

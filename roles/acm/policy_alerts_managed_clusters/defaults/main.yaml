@@ -3,17 +3,24 @@
 # ROUTING INTEGRATIONS (Pulled from global inventory variables)
 # ==============================================================================
 
-# SMTP Mapping
-alerting_smtp_host: "{{ smtp.host }}"
-alerting_smtp_port: "{{ smtp.port }}"
-alerting_smtp_from: "{{ smtp.from_address }}"
-alerting_smtp_require_tls: "{{ smtp.require_tls }}"
-alerting_smtp_username: "{{ smtp.username }}"
-alerting_smtp_password: "{{ smtp.app_password }}"
+# Email integration
+alerting_email_enabled: "{{ alerts.email.enabled | default(true) }}"
 
-# Destination Mapping
-alerting_email_default_to: "{{ smtp.default_to }}"
-alerting_email_esp_to: "{{ smtp.esp_to }}"
+# SMTP Mapping
+alerting_smtp_host: "{{ alerts.email.host }}"
+alerting_smtp_port: "{{ alerts.email.port }}"
+alerting_smtp_from: "{{ alerts.email.from_address }}"
+alerting_smtp_require_tls: "{{ alerts.email.require_tls }}"
+alerting_smtp_username: "{{ alerts.email.username }}"
+alerting_smtp_password: "{{ alerts.email.app_password }}"
+
+# Email Destination Mapping
+alerting_email_default_to: "{{ alerts.email.default_to }}"
+alerting_email_esp_to: "{{ alerts.email.esp_to }}"
+
+# Webhook integration (e.g., ServiceNow)
+alerting_webhook_enabled: "{{ alerts.webhook.enabled | default(false) }}"
+alerting_webhook_url: "{{ alerts.webhook.url | default('') }}"
 
 # ==============================================================================
 # CUSTOMER INPUT REQUIRED: Alert Thresholds
