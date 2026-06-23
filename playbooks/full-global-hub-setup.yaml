@@ -110,7 +110,6 @@
           vars:
             target_kubeconfig: "{{ global_hub_kubeconfig }}"
 
-
 #    - name: Deploy ACM Policies to monitor Regional Hubs
 #      ansible.builtin.include_role:
 #        name: acm/policy_monitor_managed_hubs

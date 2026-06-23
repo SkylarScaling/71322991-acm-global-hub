@@ -51,6 +51,14 @@ all:
       webhook:
         enabled: false
         url: ""  # e.g., https://your-instance.service-now.com/api/global/em/jsonv2
+    # Silence specific OCP platform and ACM alerts by name.
+    # Silenced alerts are routed to a null receiver on the OCP platform Alertmanager
+    # (openshift-monitoring/alertmanager-main) of each hub — they remain visible in
+    # the OCP console but generate no email or webhook notifications.
+    # See roles/acm/policy_alerts_global_hub/README.md for the full variable reference.
+    ocp_silences: []
+    acm_silences: []
+    custom_silences: []
   children:
     hub_cluster:
       hosts:

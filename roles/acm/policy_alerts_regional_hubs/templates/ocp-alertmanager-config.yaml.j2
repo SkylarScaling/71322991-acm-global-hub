@@ -1,0 +1,69 @@
+{% set all_silences = (ocp_silences | default([])) + (acm_silences | default([])) + (custom_silences | default([])) %}
+global:
+  resolve_timeout: 5m
+{% if alerting_email_enabled | bool %}
+  smtp_smarthost: '{{ alerting_smtp_host }}:{{ alerting_smtp_port }}'
+  smtp_from: '{{ alerting_smtp_from }}'
+  smtp_require_tls: {{ alerting_smtp_require_tls | lower }}
+  smtp_auth_username: '{{ alerting_smtp_username }}'
+  smtp_auth_password: '{{ alerting_smtp_password }}'
+{% endif %}
+inhibit_rules:
+  - equal:
+      - namespace
+      - alertname
+    source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity =~ warning|info
+  - equal:
+      - namespace
+      - alertname
+    source_matchers:
+      - severity = warning
+    target_matchers:
+      - severity = info
+  - equal:
+      - namespace
+    source_matchers:
+      - alertname = InfoInhibitor
+    target_matchers:
+      - severity = info
+route:
+  group_by:
+    - namespace
+  group_interval: 5m
+  group_wait: 30s
+  receiver: Default
+  repeat_interval: 12h
+  routes:
+{% for silence in all_silences %}
+    - matchers:
+        - alertname = {{ silence.name }}
+{% if silence.extra_matchers is defined %}
+{% for matcher in silence.extra_matchers %}
+        - {{ matcher }}
+{% endfor %}
+{% endif %}
+      receiver: "null"
+{% endfor %}
+    - matchers:
+        - alertname = Watchdog
+      receiver: Watchdog
+    - matchers:
+        - alertname = InfoInhibitor
+      receiver: "null"
+receivers:
+  - name: Default
+{% if alerting_email_enabled | bool %}
+    email_configs:
+      - to: '{{ alerting_email_default_to }}'
+        send_resolved: true
+{% endif %}
+{% if alerting_webhook_enabled | bool %}
+    webhook_configs:
+      - url: '{{ alerting_webhook_url }}'
+        send_resolved: true
+{% endif %}
+  - name: Watchdog
+  - name: "null"

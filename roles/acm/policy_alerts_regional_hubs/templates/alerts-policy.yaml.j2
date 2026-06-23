@@ -132,3 +132,17 @@ spec:
                       - go_gc_duration_seconds
                       - argocd_redis_request_total
                       - kube_pod_info
+
+            # PAYLOAD 4: OCP Platform Alertmanager (openshift-monitoring/alertmanager-main)
+            # Configures notification receivers and optional alert silences.
+            # Set ocp_silences / acm_silences / custom_silences in inventory to suppress specific alerts.
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: alertmanager-main
+                  namespace: openshift-monitoring
+                type: Opaque
+                data:
+                  alertmanager.yaml: {{ lookup('template', 'ocp-alertmanager-config.yaml.j2') | b64encode }}

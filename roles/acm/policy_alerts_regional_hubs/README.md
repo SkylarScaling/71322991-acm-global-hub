@@ -13,7 +13,8 @@ Managed Cluster PrometheusAgent → Regional Hub Thanos Receive → Thanos Ruler
 | File | Purpose |
 |------|---------|
 | `templates/custom_rules.yaml.j2` | All alert rule definitions (PromQL expressions, labels, annotations) |
-| `templates/alertmanager.yaml.j2` | Alertmanager config: notification channels (email, webhook) and routing rules |
+| `templates/alertmanager.yaml.j2` | MCO Alertmanager config: notification channels (email, webhook) and routing rules |
+| `templates/ocp-alertmanager-config.yaml.j2` | OCP platform Alertmanager config: notification receivers and silence routes |
 | `templates/alerts-policy.yaml.j2` | ACM Policy that enforces the above as ConfigMap/Secret on each Regional Hub |
 | `templates/alerts-placement.yaml.j2` | Placement targeting the `regional-hubs` ManagedClusterSet |
 | `defaults/main.yaml` | Threshold defaults, SMTP variable mapping, webhook settings, and cluster label selector |
@@ -101,6 +102,40 @@ receivers:
         send_resolved: true
 ```
 
+## Silencing OCP platform alerts
+
+This role manages the OCP platform Alertmanager (`openshift-monitoring/alertmanager-main`) on each Regional Hub in addition to the MCO Alertmanager. Any alert that fires through OCP platform monitoring — including ACM's own PrometheusRules — can be silenced by adding it to one of three inventory lists. Silenced alerts are routed to a null receiver and never reach your notification channels.
+
+```yaml
+# inventory.yaml
+all:
+  vars:
+    # OCP built-in alerts to silence
+    ocp_silences:
+      - name: Watchdog
+      - name: AlertmanagerReceiversNotConfigured
+      - name: CPUThrottlingHigh
+
+    # ACM-specific alerts to silence
+    acm_silences:
+      - name: MultiClusterObservabilityAddonDegraded
+      - name: SearchPVCNotPresent
+
+    # Any other alerts to silence (environment-specific)
+    custom_silences:
+      - name: NodeFilesystemSpaceFillingUp
+        extra_matchers:
+          - 'severity="warning"'
+```
+
+Each entry requires `name` (the exact `alertname` label value). The optional `extra_matchers` list accepts additional Alertmanager matcher strings to narrow which instances of that alert are silenced.
+
+Redeploy after changing silence lists:
+
+```bash
+ansible-playbook playbooks/acm/acm-global-hub-alerts-install.yaml -i inventory.yaml
+```
+
 ## Thresholds
 
 Defaults are in `defaults/main.yaml` and can be overridden in the inventory:
@@ -114,6 +149,9 @@ Defaults are in `defaults/main.yaml` and can be overridden in the inventory:
 | `alerting_webhook_url` | `webhook.url` from inventory | Webhook endpoint URL |
 | `regional_hub_cluster_label_key` | `global-hub.open-cluster-management.io/managed-hub` | Label used by the Placement to select Regional Hubs |
 | `regional_hub_cluster_label_value` | `true` | Expected value for the label above |
+| `ocp_silences` | `[]` | OCP platform alerts to silence |
+| `acm_silences` | `[]` | ACM-specific alerts to silence |
+| `custom_silences` | `[]` | Additional environment-specific alerts to silence |
 
 ## Adding metrics that rules depend on
 
