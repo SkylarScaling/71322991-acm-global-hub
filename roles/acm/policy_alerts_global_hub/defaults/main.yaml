@@ -7,20 +7,32 @@
 alerting_email_enabled: "{{ alerts.email.enabled | default(true) }}"
 
 # SMTP Mapping
-alerting_smtp_host: "{{ alerts.email.host }}"
-alerting_smtp_port: "{{ alerts.email.port }}"
-alerting_smtp_from: "{{ alerts.email.from_address }}"
-alerting_smtp_require_tls: "{{ alerts.email.require_tls }}"
-alerting_smtp_username: "{{ alerts.email.username }}"
-alerting_smtp_password: "{{ alerts.email.app_password }}"
+alerting_smtp_host: "{{ alerts.email.host | default('') }}"
+alerting_smtp_port: "{{ alerts.email.port | default('587') }}"
+alerting_smtp_from: "{{ alerts.email.from_address | default('') }}"
+alerting_smtp_require_tls: "{{ alerts.email.require_tls | default(true) }}"
+alerting_smtp_username: "{{ alerts.email.username | default('') }}"
+alerting_smtp_password: "{{ alerts.email.app_password | default('') }}"
 
 # Email Destination Mapping
-alerting_email_default_to: "{{ alerts.email.default_to }}"
-alerting_email_esp_to: "{{ alerts.email.esp_to }}"
+alerting_email_default_to: "{{ alerts.email.default_to | default('') }}"
+alerting_email_esp_to: "{{ alerts.email.esp_to | default('') }}"
 
 # Webhook integration (e.g., ServiceNow)
 alerting_webhook_enabled: "{{ alerts.webhook.enabled | default(false) }}"
 alerting_webhook_url: "{{ alerts.webhook.url | default('') }}"
+
+# Critical receiver — separate receiver for severity=critical alerts.
+# Uses per-receiver SMTP to support a different host, no-auth relay, or different TLS settings
+# than the Default receiver's global SMTP. Disabled by default.
+alerting_critical_email_enabled: "{{ alerts.critical.enabled | default(false) }}"
+alerting_critical_email_recipients: "{{ alerts.critical.recipients | default([]) }}"
+alerting_critical_smtp_host: "{{ alerts.critical.smtp_host | default('') }}"
+alerting_critical_smtp_from_prefix: "{{ alerts.critical.smtp_from_prefix | default('no-reply-') }}"
+alerting_critical_smtp_from_suffix: "{{ alerts.critical.smtp_from_suffix | default('@example.com') }}"
+alerting_critical_smtp_require_tls: "{{ alerts.critical.smtp_require_tls | default(false) }}"
+alerting_critical_group_interval: "{{ alerts.critical.group_interval | default('10m') }}"
+alerting_critical_repeat_interval: "{{ alerts.critical.repeat_interval | default('24h') }}"
 
 # ==============================================================================
 # CUSTOMER INPUT REQUIRED: Alert Thresholds

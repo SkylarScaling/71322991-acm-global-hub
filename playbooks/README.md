@@ -51,6 +51,20 @@ all:
       webhook:
         enabled: false
         url: ""  # e.g., https://your-instance.service-now.com/api/global/em/jsonv2
+      # Optional: dedicated receiver for severity=critical alerts.
+      # Supports a separate SMTP relay (e.g. unauthenticated internal relay) and
+      # multiple recipients. The from address includes the cluster name automatically.
+      critical:
+        enabled: false
+        recipients: []
+        #  - "itsm-eng@example.com"
+        #  - "itsm-ops@example.com"
+        smtp_host: ""       # e.g. "internal-relay.example.com:25" — empty falls back to global SMTP
+        smtp_from_prefix: "no-reply-critical-"
+        smtp_from_suffix: "@example.com"
+        smtp_require_tls: false
+        group_interval: "10m"
+        repeat_interval: "24h"
     # Silence specific OCP platform and ACM alerts by name.
     # Silenced alerts are routed to a null receiver on the OCP platform Alertmanager
     # (openshift-monitoring/alertmanager-main) of each hub — they remain visible in

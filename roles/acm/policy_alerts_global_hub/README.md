@@ -82,6 +82,35 @@ all:
         url: "https://your-instance.service-now.com/api/global/em/jsonv2"
 ```
 
+### Critical receiver (default: disabled)
+
+A separate `Critical` receiver can be enabled for `severity=critical` alerts. It uses per-receiver
+SMTP configuration, which allows a different mail relay, no-auth open relay, or different TLS
+settings than the `Default` receiver's global SMTP. Critical alerts use tighter repeat and group
+intervals than the defaults.
+
+The `from` address automatically includes the cluster name via Alertmanager's
+`{{ $externalLabels.cluster }}` label, so notifications identify the originating cluster without
+requiring separate configs per cluster.
+
+```yaml
+# inventory.yaml
+all:
+  vars:
+    alerts:
+      critical:
+        enabled: true
+        recipients:
+          - "itsm-eng@example.com"
+          - "itsm-ops@example.com"
+        smtp_host: "internal-relay.example.com:25"
+        smtp_from_prefix: "no-reply-critical-"   # cluster name inserted here
+        smtp_from_suffix: "@example.com"          # → no-reply-critical-<cluster>@example.com
+        smtp_require_tls: false
+        group_interval: "10m"
+        repeat_interval: "24h"
+```
+
 ### Adding a routing rule
 
 Edit `templates/alertmanager.yaml.j2`. Add a matcher under `route.routes` and a corresponding receiver. Include whichever notifier blocks apply:
@@ -150,6 +179,14 @@ Defaults are set in `defaults/main.yaml` and can be overridden in the inventory 
 | `ocp_silences` | `[]` | OCP platform alerts to silence |
 | `acm_silences` | `[]` | ACM-specific alerts to silence |
 | `custom_silences` | `[]` | Additional environment-specific alerts to silence |
+| `alerting_critical_email_enabled` | `false` | Enable the Critical receiver for severity=critical alerts |
+| `alerting_critical_email_recipients` | `[]` | List of email addresses for the Critical receiver |
+| `alerting_critical_smtp_host` | `""` | SMTP host for Critical receiver (empty = use global SMTP) |
+| `alerting_critical_smtp_from_prefix` | `"no-reply-"` | From address prefix (cluster name appended automatically) |
+| `alerting_critical_smtp_from_suffix` | `"@example.com"` | From address domain suffix |
+| `alerting_critical_smtp_require_tls` | `false` | Require TLS for Critical receiver SMTP |
+| `alerting_critical_group_interval` | `"10m"` | How long to wait before re-sending grouped critical alerts |
+| `alerting_critical_repeat_interval` | `"24h"` | How long before re-notifying on a firing critical alert |
 
 ## Metrics available for rules
 
