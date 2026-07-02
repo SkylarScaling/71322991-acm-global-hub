@@ -79,7 +79,7 @@ receivers:
     email_configs:
 {% for recipient in alerting_critical_email_recipients %}
       - to: '{{ recipient }}'
-        from: '{{ alerting_critical_smtp_from_prefix }}{% raw %}{{ $externalLabels.cluster }}{% endraw %}{{ alerting_critical_smtp_from_suffix }}'
+        from: '{{ alerting_critical_smtp_from_prefix }}{% raw %}{{hub .ManagedClusterName hub}}{% endraw %}{{ alerting_critical_smtp_from_suffix }}'
 {% if alerting_critical_smtp_host != '' %}
         smarthost: '{{ alerting_critical_smtp_host }}'
 {% endif %}
